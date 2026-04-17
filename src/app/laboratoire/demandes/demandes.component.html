@@ -1,0 +1,80 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Demandes d'Analyses</h1>
+      <p>{{ demandes.length }} demande(s) chargée(s)</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadDemandes()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+  <div class="alert alert-success" *ngIf="success" style="margin-bottom:20px;">
+    <span class="material-icons">check_circle</span> {{ success }}
+  </div>
+
+  <!-- Loading -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement des demandes..."></app-loading-spinner>
+
+  <!-- Table -->
+  <div class="table-wrap" *ngIf="!loading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Patient</th>
+          <th>Médecin</th>
+          <th>Type d'analyse</th>
+          <th>Date</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of demandes">
+          <td style="font-weight:600;">{{ d.patient }}</td>
+          <td>{{ d.medecin }}</td>
+          <td>{{ d.type }}</td>
+          <td style="white-space:nowrap;">{{ d.date ? (d.date | date:'dd/MM/yyyy') : '—' }}</td>
+          <td>
+            <span class="badge"
+              [class.badge-warning]="d.status === 'en attente'"
+              [class.badge-info]="d.status === 'en cours'"
+              [class.badge-success]="d.status === 'termine'"
+              [class.badge-danger]="d.status === 'annule'">
+              {{ d.status }}
+            </span>
+          </td>
+          <td>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-primary" *ngIf="d.status === 'en cours'"
+                      (click)="traiterDemande(d)">
+                <span class="material-icons" style="font-size:14px">upload_file</span> Résultat
+              </button>
+              <button class="btn btn-sm btn-outline" *ngIf="d.status === 'en attente'"
+                      (click)="updateStatut(d, 'en cours')">
+                <span class="material-icons" style="font-size:14px">play_arrow</span> Prendre en charge
+              </button>
+              <button class="btn btn-sm btn-danger" *ngIf="d.status === 'en cours'"
+                      (click)="updateStatut(d, 'annule')">
+                <span class="material-icons" style="font-size:14px">cancel</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="demandes.length === 0 && !loading">
+      <span class="material-icons" style="font-size:64px; color:var(--text-muted); opacity:.4;">science</span>
+      <h3 style="margin-top:16px; color:var(--text-primary);">Aucune demande</h3>
+      <p style="color:var(--text-muted);">Les demandes d'analyse envoyées par les médecins apparaîtront ici.</p>
+    </div>
+  </div>
+
+</div>

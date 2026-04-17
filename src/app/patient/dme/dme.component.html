@@ -1,0 +1,149 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mon Dossier Médical</h1>
+      <p *ngIf="dme">
+        Créé le {{ dme.dateCreation | date:'dd/MM/yyyy' }}
+        <span class="badge badge-info" *ngIf="dme.dmeId" style="margin-left:8px;">{{ dme.dmeId }}</span>
+      </p>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <span class="badge badge-success" *ngIf="dme?.statut === 'actif'">
+        <span class="material-icons" style="font-size:12px">circle</span> Actif
+      </span>
+      <button class="btn btn-outline btn-sm" (click)="loadDme()">
+        <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+
+  <app-loading-spinner [isLoading]="loading" message="Chargement de votre dossier..."></app-loading-spinner>
+
+  <ng-container *ngIf="!loading && dme">
+
+    <!-- Consultations -->
+    <div class="card slide-up" style="margin-bottom:20px;">
+      <div class="section-title">Consultations</div>
+      <div class="table-wrap">
+        <table class="dme-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Diagnostic</th>
+              <th>Traitement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of consultations">
+              <td style="white-space:nowrap;">{{ c.date ? (c.date | date:'dd/MM/yyyy') : '—' }}</td>
+              <td>{{ c.diagnostic || 'N/A' }}</td>
+              <td>{{ c.traitement || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="text-center" style="padding:24px;" *ngIf="!consultations.length">
+          <p style="color:var(--text-muted);">Aucune consultation enregistrée</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ordonnances -->
+    <div class="card slide-up">
+      <div class="section-title">Ordonnances</div>
+      <div class="table-wrap">
+        <table class="dme-table">
+          <thead>
+            <tr>
+              <th>Médicament</th>
+              <th>Posologie</th>
+              <th>Date limite</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let o of ordonnances">
+              <td style="font-weight:600;">{{ o.medicament || 'N/A' }}</td>
+              <td>{{ o.posologie || '—' }}</td>
+              <td>{{ o.dateLimite ? (o.dateLimite | date:'dd/MM/yyyy') : '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="text-center" style="padding:24px;" *ngIf="!ordonnances.length">
+          <p style="color:var(--text-muted);">Aucune ordonnance enregistrée</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observations -->
+    <div class="card slide-up" style="margin-top:20px;" *ngIf="observations.length">
+      <div class="section-title">
+        <span class="material-icons" style="font-size:16px;color:var(--warning);">monitor_heart</span>
+        Observations infirmières
+      </div>
+      <ul class="timeline">
+        <li *ngFor="let obs of observations">
+          <p style="margin:0;font-size:.875rem;font-weight:600;">{{ obs.contenu }}</p>
+          <small>{{ obs.date | date:'dd/MM/yyyy HH:mm' }}</small>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Demandes d'analyse -->
+    <div class="card slide-up" style="margin-top:20px;" *ngIf="demandes.length">
+      <div class="section-title">
+        <span class="material-icons" style="font-size:16px;color:var(--accent-violet);">science</span>
+        Demandes d'analyse
+      </div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table class="dme-table">
+          <thead><tr><th>Type</th><th>Date</th><th>Statut</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let d of demandes">
+              <td>{{ d.typeAnalyse }}</td>
+              <td>{{ d.dateDemande | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <span class="badge"
+                  [class.badge-warning]="d.statut === 'en attente'"
+                  [class.badge-info]="d.statut === 'en cours'"
+                  [class.badge-success]="d.statut === 'termine'"
+                  [class.badge-danger]="d.statut === 'annule'">{{ d.statut }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Résultats -->
+    <div class="card slide-up" style="margin-top:20px;" *ngIf="resultats.length">
+      <div class="section-title">
+        <span class="material-icons" style="font-size:16px;color:var(--success);">biotech</span>
+        Résultats d'analyse
+      </div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        <table class="dme-table">
+          <thead><tr><th>Date</th><th>Résultat</th><th>Interprétation</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of resultats">
+              <td>{{ r.dateResultat | date:'dd/MM/yyyy' }}</td>
+              <td>{{ r.resultat }}</td>
+              <td>{{ r.interpretation || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <div class="text-center" style="padding:64px;" *ngIf="!loading && !dme">
+    <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">folder_off</span>
+    <h3 style="margin-top:16px;">Aucun dossier médical trouvé</h3>
+    <p style="color:var(--text-muted);">Votre médecin n'a pas encore créé votre dossier.</p>
+  </div>
+
+</div>

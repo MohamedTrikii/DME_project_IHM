@@ -1,0 +1,30 @@
+.chat-box {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  padding: 15px;
+  height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 15px;
+}
+.msg {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  background: var(--bg-card2);
+  max-width: 70%;
+}
+.msg.me {
+  background: var(--primary);
+  color: var(--text-inverse);
+  margin-left: auto;
+}
+.input-box {
+  display: flex;
+  gap: 10px;
+}
+.input-box input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-hover);
+}

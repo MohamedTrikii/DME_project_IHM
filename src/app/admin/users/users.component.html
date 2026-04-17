@@ -1,0 +1,136 @@
+<div class="page fade-in">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Gestion des Utilisateurs</h1>
+      <p>{{ totalUsers }} utilisateur(s) au total</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()">
+      <span class="material-icons">person_add</span> Ajouter
+    </button>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-danger" *ngIf="errorMsg">
+    <span class="material-icons">error</span>
+    <div>
+      <strong>Erreur</strong>
+      <p style="margin: 4px 0 0 0;">{{ errorMsg }}</p>
+      <button class="btn btn-sm btn-outline" (click)="retry()" style="margin-top: 8px;">
+        <span class="material-icons" style="font-size: 16px;">refresh</span> Réessayer
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="flex-between" style="flex-wrap: wrap; gap: 16px;">
+      <!-- Search -->
+      <div class="search-bar" style="flex: 1; max-width: 400px;">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher un utilisateur..."
+          [(ngModel)]="searchQuery"
+          (input)="onSearch()"
+        />
+      </div>
+
+      <!-- Role Filter -->
+      <div class="flex gap-12" style="align-items: center;">
+        <select
+          class="form-select"
+          [(ngModel)]="selectedRole"
+          (change)="onRoleFilter()"
+          style="min-width: 150px;"
+        >
+          <option value="">Tous les rôles</option>
+          <option *ngFor="let role of roles" [value]="role">{{ role | titlecase }}</option>
+        </select>
+
+        <button
+          class="btn btn-outline btn-sm"
+          (click)="clearFilters()"
+          *ngIf="searchQuery || selectedRole"
+        >
+          <span class="material-icons" style="font-size: 16px;">clear</span> Effacer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <app-loading-spinner [isLoading]="isLoading" message="Chargement des utilisateurs..."></app-loading-spinner>
+
+  <!-- Users Table -->
+  <div class="card" *ngIf="!isLoading">
+    <div class="table-wrap">
+      <table class="dme-table">
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>Email</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of filteredUsers">
+            <td>
+              <div class="flex gap-8" style="align-items: center;">
+                <div class="mini-avatar">{{ (u.prenom.charAt(0) || '') + (u.nom.charAt(0) || '') }}</div>
+                <div>
+                  <div class="font-semibold">{{ u.prenom }} {{ u.nom }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ u.email }}</td>
+            <td>
+              <span class="badge" [ngClass]="roleBadgeClass(u.role || '')">{{ u.role }}</span>
+            </td>
+            <td>
+              <span class="badge badge-success" *ngIf="!u.archived">Actif</span>
+              <span class="badge badge-warning" *ngIf="u.archived">Archivé</span>
+            </td>
+            <td>
+              <div class="flex gap-8">
+                <button class="btn btn-sm btn-outline" (click)="editUser(u._id)">
+                  <span class="material-icons" style="font-size: 16px;">edit</span>
+                </button>
+                <button class="btn btn-sm btn-outline" (click)="archiveUser(u._id)" *ngIf="!u.archived">
+                  <span class="material-icons" style="font-size: 16px;">archive</span>
+                </button>
+                <button class="btn btn-sm btn-danger" (click)="deleteUser(u._id)">
+                  <span class="material-icons" style="font-size: 16px;">delete</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <div class="text-center" style="padding: 48px;" *ngIf="filteredUsers.length === 0 && !isLoading">
+        <span class="material-icons" style="font-size: 64px; color: var(--text-muted); opacity: 0.5;">person_off</span>
+        <h3 style="margin-top: 16px; color: var(--text-primary);">Aucun utilisateur trouvé</h3>
+        <p style="color: var(--text-muted);">
+          {{ searchQuery || selectedRole ? 'Essayez de modifier vos filtres.' : 'Commencez par ajouter un utilisateur.' }}
+        </p>
+        <button class="btn btn-primary" (click)="openCreate()" style="margin-top: 16px;">
+          <span class="material-icons">person_add</span> Ajouter un utilisateur
+        </button>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="filteredUsers.length > 0"
+      [pageIndex]="pageIndex"
+      [pageSize]="pageSize"
+      [total]="totalUsers"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)"
+    ></app-pagination>
+  </div>
+</div>

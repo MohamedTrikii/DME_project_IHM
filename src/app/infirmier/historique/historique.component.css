@@ -1,0 +1,25 @@
+.timeline {
+  border-left: 3px solid var(--primary);
+  padding-left: 20px;
+}
+
+.event {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.event::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: var(--primary);
+  border-radius: 50%;
+  position: absolute;
+  left: -26px;
+  top: 5px;
+}
+
+.date {
+  font-weight: bold;
+  margin-bottom: 5px;
+}

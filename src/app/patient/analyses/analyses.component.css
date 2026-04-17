@@ -1,0 +1,21 @@
+.page { padding:20px; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap: 20px;
+}
+.card {
+  background: var(--bg-surface);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
+.card:hover { transform: translateY(-5px) scale(1.02); }
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+.disponible { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.en-attente { background: rgba(245, 158, 11, 0.15); color: var(--warning); }

@@ -1,0 +1,71 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Dossiers Patients</h1>
+      <p>{{ patients.length }} dossier(s) chargé(s)</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadDossiers()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <!-- Search -->
+  <div class="card" style="margin-bottom:20px; padding:16px 20px;">
+    <div class="search-bar" style="max-width:400px;">
+      <span class="material-icons">search</span>
+      <input type="text" placeholder="Rechercher un patient..."
+             [(ngModel)]="searchQuery" (input)="onSearch()">
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+
+  <!-- Loading -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement des dossiers..."></app-loading-spinner>
+
+  <!-- Table -->
+  <div class="table-wrap" *ngIf="!loading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Patient</th>
+          <th>N° DME</th>
+          <th>Âge</th>
+          <th>Observations</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of patients">
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="mini-avatar">{{ p.nom.charAt(0) }}</div>
+              <span style="font-weight:600;">{{ p.nom }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-info" *ngIf="p.dmeNumero">{{ p.dmeNumero }}</span>
+            <span *ngIf="!p.dmeNumero">—</span>
+          </td>
+          <td>{{ p.age }}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" (click)="viewObservations(p.dmeId)" [disabled]="!p.dmeId">
+              <span class="material-icons" style="font-size:15px">monitor_heart</span> Observations
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="patients.length === 0 && !loading">
+      <span class="material-icons" style="font-size:64px; color:var(--text-muted); opacity:.4;">folder_off</span>
+      <h3 style="margin-top:16px; color:var(--text-primary);">Aucun dossier disponible</h3>
+      <p style="color:var(--text-muted);">Les dossiers apparaissent après la création des patients.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,101 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Dashboard Médecin</h1>
+      <p>Bienvenue {{ medecinName }} · {{ today }}</p>
+    </div>
+    <div class="flex gap-12">
+      <button class="btn btn-outline" routerLink="/medecin/create-patient">
+        <span class="material-icons">person_add</span> Nouveau patient
+      </button>
+      <button class="btn btn-primary" routerLink="/medecin/add-consultation">
+        <span class="material-icons">add_circle</span> Consultation
+      </button>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-danger" *ngIf="error">
+    <span class="material-icons">error</span>
+    <div>
+      <strong>Erreur</strong>
+      <p style="margin: 4px 0 0 0;">{{ error }}</p>
+      <button class="btn btn-sm btn-outline" (click)="retry()" style="margin-top: 8px;">
+        <span class="material-icons" style="font-size: 16px;">refresh</span> Réessayer
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement du dashboard..."></app-loading-spinner>
+
+  <ng-container *ngIf="!loading">
+    <!-- KPIs -->
+    <div class="stats-grid stagger">
+      <div class="stat-card slide-up" *ngFor="let s of stats">
+        <div class="icon" [style.background]="s.bg" [style.color]="s.color">
+          <span class="material-icons">{{ s.icon }}</span>
+        </div>
+        <h2>{{ s.value }}</h2>
+        <p>{{ s.label }}</p>
+        <span class="badge badge-success" *ngIf="s.sub">{{ s.sub }}</span>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="grid-2 mt-20">
+
+      <!-- Consultations récentes -->
+      <div class="card slide-up">
+        <div class="section-title">Consultations récentes</div>
+        <div *ngIf="recentConsultations.length === 0" class="text-center" style="padding: 24px;">
+          <span class="material-icons" style="font-size: 48px; color: var(--text-muted); opacity: 0.5;">event_note</span>
+          <p style="color: var(--text-muted); margin-top: 8px;">Aucune consultation récente</p>
+        </div>
+        <ul class="timeline" *ngIf="recentConsultations.length > 0">
+          <li *ngFor="let c of recentConsultations">
+            <p style="margin:0;font-size:.875rem;font-weight:600">{{ c.diagnostic }}</p>
+            <small>{{ c.patient }} · {{ c.date }}</small>
+          </li>
+        </ul>
+        <div class="mt-12" style="text-align:right">
+          <a class="btn btn-outline btn-sm" routerLink="/medecin/patients">
+            Voir mes patients <span class="material-icons" style="font-size:14px">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="flex-col gap-16">
+
+        <!-- Ordonnances récentes -->
+        <div class="card slide-up">
+          <div class="section-title">Ordonnances récentes</div>
+          <div *ngIf="recentOrdonnances.length === 0" class="text-center" style="padding: 16px;">
+            <p style="color: var(--text-muted);">Aucune ordonnance récente</p>
+          </div>
+          <ul class="timeline" *ngIf="recentOrdonnances.length > 0">
+            <li *ngFor="let o of recentOrdonnances">
+              <p style="margin:0;font-size:.875rem;font-weight:600">{{ o.medicament }}</p>
+              <small>{{ o.patient }} · {{ o.date }}</small>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="card slide-up">
+          <div class="section-title">Actions rapides</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="quick-action" *ngFor="let a of actions" [routerLink]="a.route">
+              <span class="material-icons" [style.color]="a.color">{{ a.icon }}</span>
+              <span>{{ a.label }}</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </ng-container>
+</div>

@@ -1,0 +1,88 @@
+.add-diagnostic-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.diagnostic-card {
+  padding: 20px;
+}
+
+mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.form-section h3 {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.patient-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-card2);
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.patient-info mat-icon {
+  color: var(--primary);
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+}
+
+.patient-info p {
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.loading-message {
+  color: var(--text-muted);
+  padding: 16px;
+  text-align: center;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--danger);
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--success);
+  padding: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}

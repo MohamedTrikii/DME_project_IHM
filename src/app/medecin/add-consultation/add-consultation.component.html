@@ -1,0 +1,66 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ajouter une Consultation</h1>
+      <p>Enregistrez une nouvelle consultation pour un patient</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="cancel()">
+      <span class="material-icons" style="font-size:16px">arrow_back</span> Retour
+    </button>
+  </div>
+
+  <div class="card" style="max-width:700px;">
+
+    <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+      <span class="material-icons">error</span> {{ error }}
+    </div>
+    <div class="alert alert-success" *ngIf="success" style="margin-bottom:20px;">
+      <span class="material-icons">check_circle</span> {{ success }}
+    </div>
+
+    <app-loading-spinner [isLoading]="loadingPatients" message="Chargement des patients..."></app-loading-spinner>
+
+    <form (ngSubmit)="submit()" *ngIf="!loadingPatients">
+
+      <div class="form-group">
+        <label>Patient *</label>
+        <select [(ngModel)]="selectedPatientId" name="patient" (change)="onPatientSelect()" required>
+          <option value="">— Sélectionner un patient —</option>
+          <option *ngFor="let p of patients" [value]="p._id">{{ p.nom }} {{ p.prenom }}</option>
+        </select>
+      </div>
+
+      <div class="alert alert-info" *ngIf="selectedPatientId && !patientDme" style="margin-bottom:16px;">
+        <span class="material-icons">hourglass_empty</span> Chargement du DME…
+      </div>
+
+      <div class="form-group">
+        <label>Diagnostic *</label>
+        <textarea [(ngModel)]="data.diagnostic" name="diagnostic" rows="4"
+                  placeholder="Décrivez le diagnostic clinique..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Traitement recommandé</label>
+        <textarea [(ngModel)]="data.traitement" name="traitement" rows="3"
+                  placeholder="Traitement prescrit (optionnel)..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Notes complémentaires</label>
+        <textarea [(ngModel)]="data.notes" name="notes" rows="2"
+                  placeholder="Observations additionnelles..."></textarea>
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:8px;">
+        <button type="button" class="btn btn-outline" (click)="cancel()">Annuler</button>
+        <button type="submit" class="btn btn-primary" [disabled]="loading || !selectedPatientId">
+          <span class="spinner-inline" *ngIf="loading"></span>
+          {{ loading ? 'Enregistrement...' : 'Ajouter la consultation' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>

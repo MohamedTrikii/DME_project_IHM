@@ -1,0 +1,70 @@
+<header class="header glass">
+  <!-- Left: breadcrumb / page title -->
+  <div class="header-left">
+    <button class="menu-btn" (click)="toggleMenu()" title="Toggle sidebar">
+      <span class="material-icons-round">menu</span>
+    </button>
+    <div class="breadcrumb">
+      <span class="material-icons-round bc-icon">local_hospital</span>
+      <span class="bc-label">{{ pageTitle }}</span>
+    </div>
+  </div>
+
+  <!-- Right: search · notifications · user -->
+  <div class="header-right">
+
+    <!-- Search -->
+    <div class="h-search" [class.open]="searchOpen">
+      <span class="material-icons-round">search</span>
+      <input #searchInput type="text" placeholder="Rechercher..." [(ngModel)]="searchQuery" (blur)="closeSearch()" />
+      <button class="search-trigger" (click)="openSearch()" *ngIf="!searchOpen">
+        <span class="material-icons-round">search</span>
+      </button>
+    </div>
+
+    <!-- Notifications -->
+    <div class="icon-btn notif-btn" (click)="showNotif = !showNotif">
+      <span class="material-icons-round">notifications_outlined</span>
+      <span class="notif-dot" *ngIf="hasNotif"></span>
+      <!-- Dropdown -->
+      <div class="notif-dropdown" *ngIf="showNotif" (click)="$event.stopPropagation()">
+        <div class="nd-header">
+          <span>Notifications</span>
+          <button class="btn btn-sm btn-outline" (click)="clearNotifs()">Tout lire</button>
+        </div>
+        <div class="nd-item" *ngFor="let n of notifications">
+          <span class="material-icons-round nd-icon">{{ n.icon }}</span>
+          <div>
+            <p class="nd-msg">{{ n.message }}</p>
+            <small>{{ n.time }}</small>
+          </div>
+        </div>
+        <div class="nd-empty" *ngIf="notifications.length === 0">
+          <span class="material-icons-round">check_circle</span>
+          Aucune notification
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme Toggle -->
+    <button class="icon-btn theme-toggle" (click)="toggleTheme()" [title]="'Mode ' + (currentTheme === 'dark' ? 'Clair' : 'Sombre')">
+      <span class="material-icons-round">{{ currentTheme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+    </button>
+
+    <!-- Clock -->
+    <div class="h-clock">
+      <span class="material-icons-round">schedule</span>
+      <span>{{ currentTime }}</span>
+    </div>
+
+    <!-- User -->
+    <div class="h-user">
+      <div class="h-avatar">{{ userInitial }}</div>
+      <div class="h-user-info">
+        <span class="h-user-name">{{ userName }}</span>
+        <span class="h-user-role">{{ userRole }}</span>
+      </div>
+    </div>
+
+  </div>
+</header>

@@ -1,0 +1,59 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Recherche DME</h1>
+      <p>{{ results.length }} patient(s) trouvé(s)</p>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;padding:16px 20px;">
+    <div class="search-bar">
+      <span class="material-icons">search</span>
+      <input type="text" [(ngModel)]="search" (input)="filter()"
+             placeholder="Rechercher par nom, prénom ou email...">
+    </div>
+  </div>
+
+  <app-loading-spinner [isLoading]="loading" message="Chargement des patients..."></app-loading-spinner>
+
+  <div class="table-wrap" *ngIf="!loading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Patient</th>
+          <th>Email</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of results">
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="mini-avatar">{{ p.nom.charAt(0) }}{{ p.prenom.charAt(0) }}</div>
+              <span style="font-weight:600;">{{ p.nom }} {{ p.prenom }}</span>
+            </div>
+          </td>
+          <td style="color:var(--text-muted);">{{ p.email }}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" (click)="viewDme(p)">
+              <span class="material-icons" style="font-size:15px">folder_shared</span> Voir DME
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="results.length === 0 && !loading">
+      <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">manage_search</span>
+      <h3 style="margin-top:16px;color:var(--text-primary);">Aucun résultat</h3>
+      <p style="color:var(--text-muted);">
+        {{ search ? 'Aucun patient ne correspond à votre recherche.' : 'Commencez à saisir pour rechercher.' }}
+      </p>
+    </div>
+  </div>
+</div>

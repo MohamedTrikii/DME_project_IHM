@@ -1,0 +1,280 @@
+<div class="page fade-in">
+
+  <!-- Loading -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement du dossier médical..."></app-loading-spinner>
+
+  <!-- Error -->
+  <div class="alert alert-danger" *ngIf="error && !loading" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+
+  <!-- DME Not Found — Create -->
+  <div class="text-center" style="padding:64px;" *ngIf="!loading && dmeNotFound">
+    <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">folder_off</span>
+    <h3 style="margin-top:16px;">Aucun DME trouvé pour ce patient</h3>
+    <p style="color:var(--text-muted); margin-bottom:24px;">Ce patient n'a pas encore de Dossier Médical Électronique.</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button class="btn btn-primary" (click)="createDme()" [disabled]="creating">
+        <span class="spinner-inline" *ngIf="creating"></span>
+        <span class="material-icons" *ngIf="!creating">add_circle</span>
+        {{ creating ? 'Création...' : 'Créer le DME' }}
+      </button>
+      <button class="btn btn-outline" (click)="goBack()">
+        <span class="material-icons">arrow_back</span> Retour
+      </button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading && !error && dme">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="mini-avatar" style="width:48px;height:48px;font-size:1.1rem;">
+          {{ (patient?.prenom?.charAt(0) ?? '') + (patient?.nom?.charAt(0) ?? '') }}
+        </div>
+        <div>
+          <h1 class="page-title">{{ patient?.prenom }} {{ patient?.nom }}</h1>
+          <p>Dossier Médical Électronique ·
+            <span class="badge badge-success" *ngIf="dme.statut === 'actif'">Actif</span>
+            <span class="badge badge-warning" *ngIf="dme.statut !== 'actif'">{{ dme.statut }}</span>
+            <span class="badge badge-info" *ngIf="dme.dmeId" style="margin-left:6px;">{{ dme.dmeId }}</span>
+          </p>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-outline" (click)="addAnalyse()">
+          <span class="material-icons">science</span> Analyse
+        </button>
+        <button class="btn btn-outline" (click)="addOrdonnance()">
+          <span class="material-icons">receipt_long</span> Ordonnance
+        </button>
+        <button class="btn btn-primary" (click)="addConsultation()">
+          <span class="material-icons">add_circle</span> Consultation
+        </button>
+        <button class="btn btn-outline" (click)="goBack()">
+          <span class="material-icons">arrow_back</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title">Informations Patient</div>
+      <div class="grid-3" style="gap:16px;">
+        <div>
+          <small>Email</small>
+          <p style="margin-top:4px; font-weight:600; color:var(--text-primary);">{{ patient?.email }}</p>
+        </div>
+        <div *ngIf="patient?.dateNais">
+          <small>Date de naissance</small>
+          <p style="margin-top:4px; font-weight:600; color:var(--text-primary);">{{ patient?.dateNais | date:'dd/MM/yyyy' }}</p>
+        </div>
+        <div *ngIf="patient?.telephone">
+          <small>Téléphone</small>
+          <p style="margin-top:4px; font-weight:600; color:var(--text-primary);">{{ patient?.telephone }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid-2" style="gap:24px;">
+
+      <!-- Consultations -->
+      <div class="card">
+        <div class="section-title">
+          <span class="material-icons" style="font-size:16px; color:var(--primary);">event_note</span>
+          Consultations ({{ consultations.length }})
+        </div>
+        <div class="table-wrap" *ngIf="consultations.length > 0" style="border:none; border-radius:0;">
+          <table class="dme-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Médecin</th>
+                <th>Diagnostic</th>
+                <th>Traitement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of consultations">
+                <td style="white-space:nowrap;">{{ c.date | date:'dd/MM/yyyy' }}</td>
+                <td>{{ c.medecin?.prenom }} {{ c.medecin?.nom }}</td>
+                <td>{{ c.diagnostic }}</td>
+                <td>{{ c.traitement || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-center" style="padding:24px;" *ngIf="consultations.length === 0">
+          <span class="material-icons" style="color:var(--text-muted); opacity:.4; font-size:40px;">event_note</span>
+          <p style="color:var(--text-muted); margin-top:8px;">Aucune consultation</p>
+        </div>
+        <div style="text-align:right; margin-top:12px;">
+          <button class="btn btn-sm btn-primary" (click)="addConsultation()">
+            <span class="material-icons" style="font-size:14px">add</span> Ajouter
+          </button>
+        </div>
+      </div>
+
+      <!-- Ordonnances -->
+      <div class="card">
+        <div class="section-title">
+          <span class="material-icons" style="font-size:16px; color:var(--accent-teal);">receipt_long</span>
+          Ordonnances ({{ ordonnances.length }})
+        </div>
+        <div class="table-wrap" *ngIf="ordonnances.length > 0" style="border:none; border-radius:0;">
+          <table class="dme-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Médecin</th>
+                <th>Médicament</th>
+                <th>Posologie</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let o of ordonnances">
+                <td style="white-space:nowrap;">{{ o.date | date:'dd/MM/yyyy' }}</td>
+                <td>{{ o.medecin?.prenom }} {{ o.medecin?.nom }}</td>
+                <td>{{ o.medicament }}</td>
+                <td>{{ o.posologie || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-center" style="padding:24px;" *ngIf="ordonnances.length === 0">
+          <span class="material-icons" style="color:var(--text-muted); opacity:.4; font-size:40px;">receipt_long</span>
+          <p style="color:var(--text-muted); margin-top:8px;">Aucune ordonnance</p>
+        </div>
+        <div style="text-align:right; margin-top:12px;">
+          <button class="btn btn-sm btn-outline" (click)="addOrdonnance()">
+            <span class="material-icons" style="font-size:14px">add</span> Ajouter
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Demandes + Résultats -->
+    <div class="grid-2" style="gap:24px; margin-top:24px;">
+
+      <!-- Demandes d'analyse -->
+      <div class="card">
+        <div class="section-title">
+          <span class="material-icons" style="font-size:16px; color:var(--accent-violet);">science</span>
+          Analyses ({{ demandes.length }})
+        </div>
+        <div class="table-wrap" *ngIf="demandes.length > 0" style="border:none; border-radius:0;">
+          <table class="dme-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Médecin</th>
+                <th>Date</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let d of demandes">
+                <td>{{ d.typeAnalyse }}</td>
+                <td>{{ d.medecin?.prenom }} {{ d.medecin?.nom }}</td>
+                <td style="white-space:nowrap;">{{ d.dateDemande | date:'dd/MM/yyyy' }}</td>
+                <td>
+                  <span class="badge"
+                    [class.badge-warning]="d.statut === 'en attente'"
+                    [class.badge-info]="d.statut === 'en cours'"
+                    [class.badge-success]="d.statut === 'termine'"
+                    [class.badge-danger]="d.statut === 'annule'">
+                    {{ d.statut }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-center" style="padding:24px;" *ngIf="demandes.length === 0">
+          <p style="color:var(--text-muted);">Aucune demande d'analyse</p>
+        </div>
+        <div style="text-align:right; margin-top:12px;">
+          <button class="btn btn-sm btn-outline" (click)="addAnalyse()">
+            <span class="material-icons" style="font-size:14px">add</span> Demander
+          </button>
+        </div>
+      </div>
+
+      <!-- Observations -->
+      <div class="card">
+        <div class="section-title">
+          <span class="material-icons" style="font-size:16px; color:var(--warning);">monitor_heart</span>
+          Observations infirmières ({{ observations.length }})
+        </div>
+        <ul class="timeline" *ngIf="observations.length > 0">
+          <li *ngFor="let obs of observations">
+            <p style="margin:0; font-size:.875rem; font-weight:600;">{{ obs.contenu }}</p>
+            <small>{{ obs.date | date:'dd/MM/yyyy HH:mm' }}</small>
+          </li>
+        </ul>
+        <div class="text-center" style="padding:24px;" *ngIf="observations.length === 0">
+          <p style="color:var(--text-muted);">Aucune observation</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Résultats d'analyse -->
+    <div class="card" style="margin-top:24px;" *ngIf="resultats.length > 0">
+      <div class="section-title">
+        <span class="material-icons" style="font-size:16px; color:var(--success);">biotech</span>
+        Résultats d'analyse ({{ resultats.length }})
+      </div>
+      <div class="table-wrap" style="border:none; border-radius:0;">
+        <table class="dme-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Résultat</th>
+              <th>Interprétation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of resultats">
+              <td style="white-space:nowrap;">{{ r.dateResultat | date:'dd/MM/yyyy' }}</td>
+              <td>{{ r.resultat }}</td>
+              <td>{{ r.interpretation || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Accès autorisés -->
+    <div class="card" style="margin-top:24px;" *ngIf="dme?.accesAutorise?.length > 0">
+      <div class="section-title">
+        <span class="material-icons" style="font-size:16px; color:var(--primary);">manage_accounts</span>
+        Accès autorisés ({{ dme.accesAutorise.length }})
+      </div>
+      <div class="table-wrap" style="border:none; border-radius:0;">
+        <table class="dme-table">
+          <thead>
+            <tr><th>Nom</th><th>Rôle</th><th>Email</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of dme.accesAutorise">
+              <td>Dr {{ m.prenom }} {{ m.nom }}</td>
+              <td><span class="badge badge-info">{{ m.role }}</span></td>
+              <td>{{ m.email }}</td>
+              <td>
+                <button class="btn btn-sm btn-danger" (click)="revokeAccess(m._id)" title="Révoquer l'accès">
+                  <span class="material-icons" style="font-size:14px;">remove_circle</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </ng-container>
+
+</div>

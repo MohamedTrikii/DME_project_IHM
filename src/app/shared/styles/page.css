@@ -1,0 +1,31 @@
+.page {
+  padding: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.card {
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.table-header,
+.table-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 10px;
+}
+
+.table-header {
+  font-weight: bold;
+  border-bottom: 2px solid #eee;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}

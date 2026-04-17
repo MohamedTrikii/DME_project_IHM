@@ -1,0 +1,50 @@
+<!-- ── Sidebar: Collapsible Dark Pro Medical Sidebar ── -->
+<aside class="sidebar" [class.collapsed]="collapsed">
+
+  <!-- Logo -->
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <span class="material-icons-round">local_hospital</span>
+    </div>
+    <span class="logo-text" *ngIf="!collapsed">DME Platform</span>
+    <button class="collapse-btn" (click)="toggle()" [title]="collapsed ? 'Expand' : 'Collapse'">
+      <span class="material-icons-round">{{ collapsed ? 'chevron_right' : 'chevron_left' }}</span>
+    </button>
+  </div>
+
+  <!-- User Chip -->
+  <div class="sidebar-user" *ngIf="!collapsed">
+    <div class="user-avatar">{{ userInitial }}</div>
+    <div class="user-info">
+      <span class="user-name">{{ userName }}</span>
+      <span class="user-role badge badge-primary">{{ userRole }}</span>
+    </div>
+  </div>
+  <div class="sidebar-user-mini" *ngIf="collapsed">
+    <div class="user-avatar">{{ userInitial }}</div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="sidebar-nav">
+    <div class="nav-group" *ngFor="let group of navGroups">
+      <span class="nav-label" *ngIf="!collapsed">{{ group.label }}</span>
+      <a class="nav-item" *ngFor="let item of group.items" [routerLink]="item.route" routerLinkActive="active"
+        [title]="collapsed ? item.label : ''">
+        <span class="material-icons-round nav-icon">{{ item.icon }}</span>
+        <span class="nav-text" *ngIf="!collapsed">{{ item.label }}</span>
+        <span class="nav-badge" *ngIf="item.badge && !collapsed">{{ item.badge }}</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Footer -->
+  <div class="sidebar-footer">
+    <a class="nav-item" (click)="logout()" [title]="collapsed ? 'Deconnexion' : ''">
+      <span class="material-icons-round nav-icon">logout</span>
+      <span class="nav-text" *ngIf="!collapsed">Deconnexion</span>
+    </a>
+  </div>
+</aside>
+
+<!-- Mobile backdrop -->
+<div class="mobile-backdrop" [class.visible]="!collapsed" (click)="toggle()"></div>

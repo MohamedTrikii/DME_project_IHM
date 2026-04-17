@@ -1,0 +1,87 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ajouter un Diagnostic</h1>
+      <p>Enregistrez un diagnostic et son traitement associé</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="cancel()">
+      <span class="material-icons" style="font-size:16px">arrow_back</span> Retour
+    </button>
+  </div>
+
+  <div class="card" style="max-width:720px;">
+
+    <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+      <span class="material-icons">error</span> {{ error }}
+    </div>
+    <div class="alert alert-success" *ngIf="success" style="margin-bottom:20px;">
+      <span class="material-icons">check_circle</span> {{ success }}
+    </div>
+
+    <app-loading-spinner [isLoading]="loadingPatients" message="Chargement des patients..."></app-loading-spinner>
+
+    <ng-container *ngIf="!loadingPatients">
+
+      <!-- Patient selection -->
+      <div class="section-title" style="margin-bottom:16px;">Sélection du patient</div>
+
+      <div class="form-group">
+        <label>Patient *</label>
+        <select [(ngModel)]="selectedPatientId" (change)="onPatientSelect()" required>
+          <option value="">— Choisir un patient —</option>
+          <option *ngFor="let p of patients" [value]="p._id">{{ p.nom }} {{ p.prenom }}</option>
+        </select>
+      </div>
+
+      <!-- Selected patient info card -->
+      <div *ngIf="selectedPatient" class="card" style="background:var(--bg-surface);margin-bottom:24px;padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="mini-avatar" style="width:40px;height:40px;font-size:1rem;">
+            {{ selectedPatient.nom.charAt(0) }}{{ selectedPatient.prenom.charAt(0) }}
+          </div>
+          <div>
+            <div style="font-weight:700;">{{ selectedPatient.nom }} {{ selectedPatient.prenom }}</div>
+            <div style="font-size:.85rem;color:var(--text-muted);">{{ selectedPatient.email }}</div>
+            <div style="font-size:.85rem;color:var(--text-muted);" *ngIf="selectedPatient.telephone">
+              Tél: {{ selectedPatient.telephone }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostic form -->
+      <ng-container *ngIf="selectedPatientId">
+        <div class="section-title" style="margin-bottom:16px;">Informations médicales</div>
+
+        <div class="form-group">
+          <label>Diagnostic *</label>
+          <textarea [(ngModel)]="diagnostic" rows="4"
+                    placeholder="Décrivez le diagnostic clinique..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Traitement recommandé</label>
+          <textarea [(ngModel)]="traitement" rows="3"
+                    placeholder="Décrivez le traitement recommandé (optionnel)..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Notes additionnelles</label>
+          <textarea [(ngModel)]="notes" rows="2"
+                    placeholder="Notes complémentaires (optionnel)..."></textarea>
+        </div>
+      </ng-container>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:8px;">
+        <button type="button" class="btn btn-outline" (click)="cancel()">Annuler</button>
+        <button type="button" class="btn btn-primary" (click)="submit()"
+                [disabled]="loading || !selectedPatientId">
+          <span class="spinner-inline" *ngIf="loading"></span>
+          {{ loading ? 'Enregistrement...' : 'Enregistrer le diagnostic' }}
+        </button>
+      </div>
+
+    </ng-container>
+  </div>
+</div>

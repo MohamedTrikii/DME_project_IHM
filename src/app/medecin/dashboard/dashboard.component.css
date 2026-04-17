@@ -1,0 +1,79 @@
+.p-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-teal), var(--primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .8rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.rdv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rdv-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all var(--t-fast);
+}
+
+.rdv-item:hover {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.rdv-time {
+  font-family: 'Inter', monospace;
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--primary);
+  min-width: 42px;
+}
+
+.rdv-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: 'Inter', sans-serif;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  text-align: center;
+}
+
+.quick-action:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+.quick-action .material-icons-round {
+  font-size: 22px;
+}

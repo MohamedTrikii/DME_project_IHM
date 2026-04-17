@@ -1,0 +1,68 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Créer une Ordonnance</h1>
+      <p>Prescrivez un traitement médicamenteux pour un patient</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="cancel()">
+      <span class="material-icons" style="font-size:16px">arrow_back</span> Retour
+    </button>
+  </div>
+
+  <div class="card" style="max-width:700px;">
+
+    <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+      <span class="material-icons">error</span> {{ error }}
+    </div>
+    <div class="alert alert-success" *ngIf="success" style="margin-bottom:20px;">
+      <span class="material-icons">check_circle</span> {{ success }}
+    </div>
+
+    <app-loading-spinner [isLoading]="loadingPatients" message="Chargement des patients..."></app-loading-spinner>
+
+    <form (ngSubmit)="submit()" *ngIf="!loadingPatients">
+
+      <div class="form-group">
+        <label>Patient *</label>
+        <select [(ngModel)]="selectedPatientId" name="patient" (change)="onPatientSelect()" required>
+          <option value="">— Sélectionner un patient —</option>
+          <option *ngFor="let p of patients" [value]="p._id">{{ p.nom }} {{ p.prenom }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Médicament *</label>
+        <input type="text" [(ngModel)]="ordonnance.medicament" name="medicament"
+               placeholder="Nom du médicament" required>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Posologie</label>
+          <input type="text" [(ngModel)]="ordonnance.posologie" name="posologie"
+                 placeholder="Ex: 1 comprimé 3 fois/jour">
+        </div>
+        <div class="form-group">
+          <label>Durée</label>
+          <input type="text" [(ngModel)]="ordonnance.duree" name="duree"
+                 placeholder="Ex: 7 jours">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Date limite de validité</label>
+        <input type="date" [(ngModel)]="ordonnance.dateLimite" name="dateLimite">
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:8px;">
+        <button type="button" class="btn btn-outline" (click)="cancel()">Annuler</button>
+        <button type="submit" class="btn btn-primary" [disabled]="loading || !selectedPatientId">
+          <span class="spinner-inline" *ngIf="loading"></span>
+          {{ loading ? 'Enregistrement...' : 'Créer l\'ordonnance' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>

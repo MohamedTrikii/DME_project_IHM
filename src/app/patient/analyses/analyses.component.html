@@ -1,0 +1,54 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mes Analyses</h1>
+      <p>{{ analyses.length }} analyse(s)</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadAnalyses()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+
+  <app-loading-spinner [isLoading]="loading" message="Chargement des analyses..."></app-loading-spinner>
+
+  <div class="table-wrap" *ngIf="!loading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Type d'analyse</th>
+          <th>Date</th>
+          <th>Statut</th>
+          <th>Résultat</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let a of analyses">
+          <td style="font-weight:600;">{{ a.name || 'N/A' }}</td>
+          <td style="white-space:nowrap;">{{ a.date ? (a.date | date:'dd/MM/yyyy') : '—' }}</td>
+          <td>
+            <span class="badge"
+              [class.badge-warning]="a.status === 'en attente'"
+              [class.badge-info]="a.status === 'en cours'"
+              [class.badge-success]="a.status === 'termine'"
+              [class.badge-danger]="a.status === 'annule'">
+              {{ a.status || 'N/A' }}
+            </span>
+          </td>
+          <td>{{ a.resultat || '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="analyses.length === 0">
+      <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">science</span>
+      <h3 style="margin-top:16px;">Aucune analyse</h3>
+      <p style="color:var(--text-muted);">Aucune analyse demandée pour votre dossier.</p>
+    </div>
+  </div>
+
+</div>

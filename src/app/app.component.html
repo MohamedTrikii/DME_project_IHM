@@ -1,0 +1,9 @@
+<app-notification-center></app-notification-center>
+
+<ng-container *ngIf="isAuthPage; else appShell">
+	<router-outlet></router-outlet>
+</ng-container>
+
+<ng-template #appShell>
+	<app-layout></app-layout>
+</ng-template>

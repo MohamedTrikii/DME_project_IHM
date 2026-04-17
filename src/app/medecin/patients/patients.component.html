@@ -1,0 +1,88 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Patients</h1>
+      <p>{{ filteredPatients.length }} / {{ patients.length }} patient(s)</p>
+    </div>
+    <button class="btn btn-primary" routerLink="/medecin/create-patient">
+      <span class="material-icons">person_add</span> Nouveau patient
+    </button>
+  </div>
+
+  <!-- Search + Refresh -->
+  <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div class="search-bar" style="flex:1; max-width:400px;">
+        <span class="material-icons">search</span>
+        <input type="text" placeholder="Rechercher par nom, prénom, email..."
+               [(ngModel)]="searchQuery" (input)="onSearch()">
+      </div>
+      <button class="btn btn-outline btn-sm" (click)="loadPatients()">
+        <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+      </button>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="alert alert-danger" *ngIf="errorMsg" style="margin-bottom:20px;">
+    <span class="material-icons">error</span>
+    <div>
+      {{ errorMsg }}
+      <button class="btn btn-sm btn-outline" (click)="loadPatients()" style="margin-left:12px;">Réessayer</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <app-loading-spinner [isLoading]="isLoading" message="Chargement des patients..."></app-loading-spinner>
+
+  <!-- Table -->
+  <div class="table-wrap" *ngIf="!isLoading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Patient</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of filteredPatients">
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="mini-avatar">{{ initials(p) }}</div>
+              <span style="font-weight:600;">{{ p.prenom }} {{ p.nom }}</span>
+            </div>
+          </td>
+          <td>{{ p.email }}</td>
+          <td>{{ p.telephone || '—' }}</td>
+          <td>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-outline" (click)="edit(p._id)">
+                <span class="material-icons" style="font-size:15px">edit</span> Modifier
+              </button>
+              <button class="btn btn-sm btn-primary" (click)="openDme(p._id)">
+                <span class="material-icons" style="font-size:15px">folder_shared</span> DME
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Empty state -->
+    <div class="text-center" style="padding:48px;" *ngIf="filteredPatients.length === 0">
+      <span class="material-icons" style="font-size:64px; color:var(--text-muted); opacity:.4;">person_off</span>
+      <h3 style="margin-top:16px; color:var(--text-primary);">Aucun patient trouvé</h3>
+      <p style="color:var(--text-muted);">
+        {{ searchQuery ? 'Essayez de modifier votre recherche.' : 'Commencez par ajouter un patient.' }}
+      </p>
+      <button class="btn btn-primary" routerLink="/medecin/create-patient" style="margin-top:16px;">
+        <span class="material-icons">person_add</span> Ajouter un patient
+      </button>
+    </div>
+  </div>
+
+</div>

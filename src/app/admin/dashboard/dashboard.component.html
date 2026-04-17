@@ -1,0 +1,119 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Dashboard Admin</h1>
+      <p>Vue d'ensemble du système — {{ today }}</p>
+    </div>
+    <button class="btn btn-primary" routerLink="/admin/add-user">
+      <span class="material-icons">person_add</span>
+      Ajouter utilisateur
+    </button>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-danger" *ngIf="errorMsg">
+    <span class="material-icons">error</span>
+    <div>
+      <strong>Erreur</strong>
+      <p style="margin: 4px 0 0 0;">{{ errorMsg }}</p>
+      <button class="btn btn-sm btn-outline" (click)="retry()" style="margin-top: 8px;">
+        <span class="material-icons" style="font-size: 16px;">refresh</span> Réessayer
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <app-loading-spinner [isLoading]="isLoading" message="Chargement du dashboard..."></app-loading-spinner>
+
+  <!-- KPI Stats -->
+  <div class="stats-grid stagger" *ngIf="!isLoading">
+    <div class="stat-card slide-up" *ngFor="let s of stats">
+      <div class="icon" [style.background]="s.bg" [style.color]="s.color">
+        <span class="material-icons">{{ s.icon }}</span>
+      </div>
+      <h2>{{ s.value }}</h2>
+      <p>{{ s.label }}</p>
+      <span class="badge" [ngClass]="s.trend > 0 ? 'badge-success' : 'badge-danger'">
+        <span class="material-icons" style="font-size:12px">{{ s.trend > 0 ? 'trending_up' : 'trending_down' }}</span>
+        {{ s.trend > 0 ? '+' : '' }}{{ s.trend }}%
+      </span>
+    </div>
+  </div>
+
+  <!-- Content Grid -->
+  <div class="grid-2 mt-20" *ngIf="!isLoading">
+
+    <!-- Recent Users -->
+    <div class="card slide-up">
+      <div class="section-title">Utilisateurs récents</div>
+      <div *ngIf="recentUsers.length === 0" class="text-center" style="padding: 24px;">
+        <p style="color: var(--text-muted);">Aucun utilisateur récent</p>
+      </div>
+      <div class="table-wrap" *ngIf="recentUsers.length > 0">
+        <table class="dme-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Rôle</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of recentUsers">
+              <td>
+                <div class="flex gap-8" style="align-items:center">
+                  <div class="mini-avatar">{{ u.nom.charAt(0) }}</div>
+                  <span>{{ u.prenom }} {{ u.nom }}</span>
+                </div>
+              </td>
+              <td><span class="badge" [ngClass]="roleBadge(u.role)">{{ u.role }}</span></td>
+              <td><span class="badge badge-success">Actif</span></td>
+              <td>
+                <div class="flex gap-8">
+                  <button class="btn btn-sm btn-outline" [disabled]="!u._id" [routerLink]="u._id ? ['/admin/edit-user', u._id] : null">Éditer</button>
+                  <button class="btn btn-sm btn-danger">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-12" style="text-align:right">
+        <a class="btn btn-outline btn-sm" routerLink="/admin/users">
+          Voir tout <span class="material-icons" style="font-size:14px">arrow_forward</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Quick Actions + Logs -->
+    <div class="flex-col gap-16">
+
+      <div class="card slide-up">
+        <div class="section-title">Actions rapides</div>
+        <div class="cards-grid" style="grid-template-columns:1fr 1fr">
+          <button class="quick-action" *ngFor="let a of quickActions" [routerLink]="a.route">
+            <span class="material-icons">{{ a.icon }}</span>
+            <span>{{ a.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card slide-up">
+        <div class="section-title">Activité récente</div>
+        <div *ngIf="recentLogs.length === 0" class="text-center" style="padding: 24px;">
+          <p style="color: var(--text-muted);">Aucune activité récente</p>
+        </div>
+        <ul class="timeline" *ngIf="recentLogs.length > 0">
+          <li *ngFor="let l of recentLogs">
+            <p style="margin:0;font-size:.875rem;font-weight:500">{{ l.action }}</p>
+            <small>{{ l.user }} · {{ l.time }}</small>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</div>

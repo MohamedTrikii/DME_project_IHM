@@ -1,0 +1,73 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Enregistrer un Résultat</h1>
+      <p>Saisissez le résultat d'une analyse demandée</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="cancel()">
+      <span class="material-icons" style="font-size:16px">arrow_back</span> Retour
+    </button>
+  </div>
+
+  <div class="card" style="max-width:720px;">
+
+    <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+      <span class="material-icons">error</span> {{ error }}
+    </div>
+    <div class="alert alert-success" *ngIf="message" style="margin-bottom:20px;">
+      <span class="material-icons">check_circle</span> {{ message }}
+    </div>
+
+    <app-loading-spinner [isLoading]="loading && demandes.length === 0" message="Chargement des demandes...">
+    </app-loading-spinner>
+
+    <ng-container *ngIf="!loading || demandes.length > 0">
+
+      <div class="form-group">
+        <label>Demande d'analyse *</label>
+        <select [(ngModel)]="selectedDemandeId" name="demande" required>
+          <option value="">— Sélectionner une demande —</option>
+          <option *ngFor="let d of demandes" [value]="d.id">
+            {{ d.type }} — {{ d.patient }} ({{ d.status }})
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Résultat *</label>
+        <textarea [(ngModel)]="resultatText" name="resultat" rows="5"
+                  placeholder="Saisissez le résultat détaillé de l'analyse..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Interprétation</label>
+        <textarea [(ngModel)]="interpretation" name="interpretation" rows="3"
+                  placeholder="Interprétation des résultats (optionnel)..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Fichier joint (optionnel)</label>
+        <input type="file" (change)="onFileSelected($event)"
+               style="padding:8px; cursor:pointer;">
+        <small *ngIf="fileName" style="color:var(--success); margin-top:4px;">
+          <span class="material-icons" style="font-size:14px;vertical-align:middle;">attach_file</span>
+          {{ fileName }}
+        </small>
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:8px;">
+        <button type="button" class="btn btn-outline" (click)="cancel()">Annuler</button>
+        <button type="button" class="btn btn-outline btn-sm" (click)="loadDemandes()">
+          <span class="material-icons" style="font-size:15px">refresh</span>
+        </button>
+        <button type="button" class="btn btn-primary" (click)="upload()"
+                [disabled]="loading || !selectedDemandeId || !resultatText.trim()">
+          <span class="spinner-inline" *ngIf="loading"></span>
+          {{ loading ? 'Enregistrement...' : 'Enregistrer le résultat' }}
+        </button>
+      </div>
+
+    </ng-container>
+  </div>
+</div>

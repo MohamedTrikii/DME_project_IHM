@@ -1,0 +1,47 @@
+<div class="page fade-in">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Utilisateurs Archivés</h1>
+      <p>{{ archivedUsers.length }} utilisateur(s) archivé(s)</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadArchivedUsers()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="errorMsg" style="margin-bottom:16px;">
+    <span class="material-icons">error</span> {{ errorMsg }}
+  </div>
+
+  <app-loading-spinner [isLoading]="isLoading" message="Chargement des archives..."></app-loading-spinner>
+
+  <div class="table-wrap" *ngIf="!isLoading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Utilisateur</th>
+          <th>Email</th>
+          <th>Rôle</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of archivedUsers">
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="mini-avatar">{{ user.prenom.charAt(0) || '?' }}</div>
+              <span style="font-weight:600;">{{ user.prenom }} {{ user.nom }}</span>
+            </div>
+          </td>
+          <td>{{ user.email }}</td>
+          <td><span class="badge badge-warning">{{ user.role }}</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="archivedUsers.length === 0">
+      <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">inventory_2</span>
+      <h3 style="margin-top:16px;">Aucune archive disponible</h3>
+      <p style="color:var(--text-muted);">Les utilisateurs archivés s'afficheront ici.</p>
+    </div>
+  </div>
+</div>

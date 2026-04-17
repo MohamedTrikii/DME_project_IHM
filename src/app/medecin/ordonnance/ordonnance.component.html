@@ -1,0 +1,30 @@
+<div class="page fade-in">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ordonnances</h1>
+      <p>{{ ordonnances.length }} ordonnance(s) exemple</p>
+    </div>
+    <a class="btn btn-primary" routerLink="/medecin/create-ordonnance">
+      <span class="material-icons">add</span> Nouvelle ordonnance
+    </a>
+  </div>
+
+  <div class="table-wrap">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Médicament</th>
+          <th>Dosage</th>
+          <th>Durée</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of ordonnances">
+          <td style="font-weight:600;">{{ o.medicament }}</td>
+          <td>{{ o.dosage }}</td>
+          <td>{{ o.duree }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

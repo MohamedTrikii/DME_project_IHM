@@ -1,0 +1,64 @@
+<div class="page fade-in">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ajouter Un Utilisateur</h1>
+      <p>Créez un compte utilisateur avec le rôle approprié</p>
+    </div>
+    <a class="btn btn-outline btn-sm" routerLink="/admin/users">
+      <span class="material-icons" style="font-size:16px">arrow_back</span> Retour
+    </a>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="errorMsg" style="margin-bottom:16px;">
+    <span class="material-icons">error</span> {{ errorMsg }}
+  </div>
+  <div class="alert alert-success" *ngIf="successMsg" style="margin-bottom:16px;">
+    <span class="material-icons">check_circle</span> {{ successMsg }}
+  </div>
+
+  <div class="card" style="max-width:760px;">
+    <form (ngSubmit)="save()" #f="ngForm">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Nom</label>
+          <input [(ngModel)]="user.nom" name="nom" placeholder="Nom" required>
+        </div>
+        <div class="form-group">
+          <label>Prénom</label>
+          <input [(ngModel)]="user.prenom" name="prenom" placeholder="Prénom" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input [(ngModel)]="user.email" name="email" type="email" placeholder="Email" required>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input [(ngModel)]="user.mot_de_passe" name="mot_de_passe" type="password" placeholder="Mot de passe" required>
+        </div>
+        <div class="form-group">
+          <label>Rôle</label>
+          <select [(ngModel)]="user.role" name="role" required>
+            <option value="medecin">Médecin</option>
+            <option value="patient">Patient</option>
+            <option value="infirmier">Infirmier</option>
+            <option value="laboratoire">Laboratoire</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-12" style="margin-top:8px;">
+        <button class="btn btn-primary" type="submit" [disabled]="isLoading || !f.valid">
+          <span class="material-icons" style="font-size:16px" *ngIf="!isLoading">person_add</span>
+          <span class="spinner-inline" *ngIf="isLoading"></span>
+          {{ isLoading ? 'Création...' : 'Ajouter' }}
+        </button>
+        <a class="btn btn-outline" routerLink="/admin/users">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>

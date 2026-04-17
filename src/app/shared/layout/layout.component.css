@@ -1,0 +1,51 @@
+/* ══════════════════════════════════════
+   LAYOUT — App Shell
+══════════════════════════════════════ */
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-base);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.content {
+  flex: 1;
+  padding: 28px 32px;
+  background: var(--bg-base);
+  animation: fadeSlideUp 0.45s cubic-bezier(.4, 0, .2, 1) both;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 16px;
+  }
+
+  /* Main takes full width — sidebar overlays */
+  .main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .layout {
+    overflow-x: hidden;
+  }
+}

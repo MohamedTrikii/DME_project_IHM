@@ -1,0 +1,71 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Gestion des Accès</h1>
+      <p>Contrôlez qui peut accéder à votre dossier médical</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadAccess()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+  <div class="alert alert-success" *ngIf="message" style="margin-bottom:20px;">
+    <span class="material-icons">check_circle</span> {{ message }}
+  </div>
+
+  <!-- Grant access form -->
+  <div class="card" style="max-width:560px;margin-bottom:24px;">
+    <div class="section-title" style="margin-bottom:16px;">Ajouter un accès</div>
+    <div style="display:flex;gap:12px;align-items:flex-end;">
+      <div class="form-group" style="flex:1;margin-bottom:0;">
+        <label>ID du médecin</label>
+        <input type="text" [(ngModel)]="medecinId" placeholder="Identifiant du médecin à autoriser">
+      </div>
+      <button class="btn btn-primary" (click)="grant()" [disabled]="!medecinId.trim()">
+        <span class="material-icons" style="font-size:16px">add</span> Autoriser
+      </button>
+    </div>
+  </div>
+
+  <!-- Access list -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement des accès..."></app-loading-spinner>
+
+  <div class="table-wrap" *ngIf="!loading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Médecin</th>
+          <th>Rôle</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let a of accessList">
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="mini-avatar">{{ a.nom.charAt(0) }}</div>
+              <span style="font-weight:600;">{{ a.nom }}</span>
+            </div>
+          </td>
+          <td><span class="badge badge-primary">{{ a.role }}</span></td>
+          <td>
+            <button class="btn btn-sm btn-danger" (click)="revoke(a)">
+              <span class="material-icons" style="font-size:14px">person_remove</span> Révoquer
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="accessList.length === 0">
+      <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">lock</span>
+      <h3 style="margin-top:16px;">Aucun accès enregistré</h3>
+      <p style="color:var(--text-muted);">Seuls les médecins autorisés peuvent consulter votre dossier.</p>
+    </div>
+  </div>
+
+</div>

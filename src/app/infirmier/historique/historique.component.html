@@ -1,0 +1,19 @@
+<h2>Historique des soins</h2>
+
+<button mat-raised-button color="primary" (click)="loadHistorique()" style="margin-bottom: 12px;">Actualiser</button>
+
+<p *ngIf="loading">Chargement...</p>
+<p *ngIf="error" class="error">{{ error }}</p>
+
+<div class="timeline">
+  <div class="event" *ngFor="let h of historiques">
+    <div class="date">{{ h.date ? (h.date | date: 'dd/MM/yyyy') : 'N/A' }}</div>
+    <div class="content">
+      <mat-card>
+        <p>{{h.description}}</p>
+      </mat-card>
+    </div>
+  </div>
+</div>
+
+<p *ngIf="!loading && !error && historiques.length === 0">Aucun élément trouvé.</p>

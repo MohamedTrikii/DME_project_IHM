@@ -1,0 +1,73 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Observations</h1>
+      <p>{{ observations.length }} observation(s) pour le dossier sélectionné</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadDmes()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+  <div class="alert alert-success" *ngIf="message" style="margin-bottom:20px;">
+    <span class="material-icons">check_circle</span> {{ message }}
+  </div>
+
+  <!-- Controls -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label>Dossier patient</label>
+      <select [(ngModel)]="selectedDmeId" (change)="loadObservations()">
+        <option value="">— Sélectionner un dossier —</option>
+        <option *ngFor="let d of dmes" [value]="d.id">{{ d.label }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement des observations..."></app-loading-spinner>
+
+  <!-- Add observation form -->
+  <div class="card" style="margin-bottom:20px;" *ngIf="selectedDmeId && !loading">
+    <div class="section-title" style="margin-bottom:16px;">Nouvelle observation</div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Observation *</label>
+      <textarea [(ngModel)]="newObs" rows="3"
+                placeholder="Saisissez votre observation clinique..."></textarea>
+    </div>
+    <div style="display:flex; justify-content:flex-end;">
+      <button class="btn btn-primary" (click)="add()" [disabled]="!newObs.trim()">
+        <span class="material-icons" style="font-size:16px">add</span> Ajouter l'observation
+      </button>
+    </div>
+  </div>
+
+  <!-- Observations list -->
+  <div class="card" *ngIf="!loading && selectedDmeId">
+    <div class="section-title" style="margin-bottom:16px;">Historique des observations</div>
+
+    <ul class="timeline" *ngIf="observations.length > 0">
+      <li *ngFor="let obs of observations">
+        <p style="margin:0; font-size:.9rem;">{{ obs }}</p>
+      </li>
+    </ul>
+
+    <div class="text-center" style="padding:32px;" *ngIf="observations.length === 0">
+      <span class="material-icons" style="font-size:48px;color:var(--text-muted);opacity:.4;">monitor_heart</span>
+      <p style="color:var(--text-muted);margin-top:12px;">Aucune observation pour ce dossier.</p>
+    </div>
+  </div>
+
+  <!-- No dossier selected -->
+  <div class="text-center" style="padding:48px;" *ngIf="!selectedDmeId && !loading">
+    <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">folder_open</span>
+    <h3 style="margin-top:16px;color:var(--text-primary);">Sélectionnez un dossier</h3>
+    <p style="color:var(--text-muted);">Choisissez un dossier patient pour voir et ajouter des observations.</p>
+  </div>
+
+</div>

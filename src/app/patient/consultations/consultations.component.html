@@ -1,0 +1,54 @@
+<div class="page fade-in">
+
+	<div class="page-header">
+		<div>
+			<h1 class="page-title">Mes Consultations</h1>
+			<p>{{ filteredConsultations().length }} consultation(s)</p>
+		</div>
+		<button class="btn btn-outline btn-sm" (click)="loadConsultations()">
+			<span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+		</button>
+	</div>
+
+	<div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+		<span class="material-icons">error</span> {{ error }}
+	</div>
+
+	<div class="card" style="margin-bottom:20px;padding:16px 20px;">
+		<div class="search-bar">
+			<span class="material-icons">search</span>
+			<input type="text" [(ngModel)]="search"
+						 placeholder="Rechercher par diagnostic, traitement...">
+		</div>
+	</div>
+
+	<app-loading-spinner [isLoading]="loading" message="Chargement des consultations..."></app-loading-spinner>
+
+	<div class="table-wrap" *ngIf="!loading">
+		<table class="dme-table">
+			<thead>
+				<tr>
+					<th>Date</th>
+					<th>Diagnostic</th>
+					<th>Traitement</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr *ngFor="let c of filteredConsultations()">
+					<td style="white-space:nowrap;">{{ c.date ? (c.date | date:'dd/MM/yyyy') : '—' }}</td>
+					<td>{{ c.diagnostic || 'N/A' }}</td>
+					<td>{{ c.traitement || '—' }}</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div class="text-center" style="padding:48px;" *ngIf="filteredConsultations().length === 0">
+			<span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">event_note</span>
+			<h3 style="margin-top:16px;">Aucune consultation</h3>
+			<p style="color:var(--text-muted);">
+				{{ search ? 'Aucun résultat pour votre recherche.' : 'Aucune consultation enregistrée.' }}
+			</p>
+		</div>
+	</div>
+
+</div>

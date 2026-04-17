@@ -1,0 +1,99 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mon Espace Santé</h1>
+      <p>Bonjour {{ patientName }} · {{ today }}</p>
+    </div>
+    <button class="btn btn-outline" routerLink="/patient/profile">
+      <span class="material-icons">manage_accounts</span>
+      Mon profil
+    </button>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-danger" *ngIf="error">
+    <span class="material-icons">error</span>
+    <div>
+      <strong>Erreur</strong>
+      <p style="margin: 4px 0 0 0;">{{ error }}</p>
+      <button class="btn btn-sm btn-outline" (click)="retry()" style="margin-top: 8px;">
+        <span class="material-icons" style="font-size: 16px;">refresh</span> Réessayer
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement de votre espace santé..."></app-loading-spinner>
+
+  <ng-container *ngIf="!loading">
+    <!-- KPIs -->
+    <div class="stats-grid stagger">
+      <div class="stat-card slide-up" *ngFor="let s of stats" [routerLink]="s.route" style="cursor:pointer">
+        <div class="icon" [style.background]="s.bg" [style.color]="s.color">
+          <span class="material-icons">{{ s.icon }}</span>
+        </div>
+        <h2>{{ s.value }}</h2>
+        <p>{{ s.label }}</p>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid-2 mt-20">
+
+      <!-- Dernières consultations -->
+      <div class="card slide-up">
+        <div class="section-title">Dernières consultations</div>
+        <div *ngIf="recentConsultations.length === 0" class="text-center" style="padding: 24px;">
+          <span class="material-icons" style="font-size: 48px; color: var(--text-muted); opacity: 0.5;">event_note</span>
+          <p style="color: var(--text-muted); margin-top: 8px;">Aucune consultation récente</p>
+        </div>
+        <ul class="timeline" *ngIf="recentConsultations.length > 0">
+          <li *ngFor="let c of recentConsultations">
+            <p style="margin:0;font-size:.875rem;font-weight:600">{{ c.diagnostic }}</p>
+            <small>{{ c.medecin }} · {{ c.date }}</small>
+            <span class="badge badge-primary" style="margin-top:4px;display:inline-flex">{{ c.type }}</span>
+          </li>
+        </ul>
+        <a class="btn btn-outline btn-sm mt-12" routerLink="/patient/consultations">
+          Voir toutes <span class="material-icons" style="font-size:14px">arrow_forward</span>
+        </a>
+      </div>
+
+      <!-- Right -->
+      <div class="flex-col gap-16">
+
+        <!-- Dernières ordonnances -->
+        <div class="card slide-up">
+          <div class="section-title">Dernières ordonnances</div>
+          <div *ngIf="recentOrdonnances.length === 0" class="text-center" style="padding: 16px;">
+            <p style="color: var(--text-muted);">Aucune ordonnance récente</p>
+          </div>
+          <ul class="timeline" *ngIf="recentOrdonnances.length > 0">
+            <li *ngFor="let o of recentOrdonnances">
+              <p style="margin:0;font-size:.875rem;font-weight:600">{{ o.medicament }}</p>
+              <small>{{ o.medecin }} · {{ o.date }}</small>
+            </li>
+          </ul>
+          <a class="btn btn-outline btn-sm mt-12" routerLink="/patient/ordonnances">
+            Voir toutes <span class="material-icons" style="font-size:14px">arrow_forward</span>
+          </a>
+        </div>
+
+        <!-- Liens rapides -->
+        <div class="card slide-up">
+          <div class="section-title">Accès rapide</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a class="quick-link" *ngFor="let action of quickActions" [routerLink]="action.route">
+              <span class="material-icons" style="color:var(--primary)">{{ action.icon }}</span>
+              <span>{{ action.label }}</span>
+              <span class="material-icons" style="font-size:16px;color:var(--text-muted);margin-left:auto">chevron_right</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </ng-container>
+</div>

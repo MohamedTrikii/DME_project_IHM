@@ -1,0 +1,361 @@
+/* ══════════════════════════════════════
+   SIDEBAR — Dark Pro Collapsible
+══════════════════════════════════════ */
+:host {
+  display: block;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--t-med);
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent-cyan));
+}
+
+/* ── Logo ── */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border);
+  min-height: 68px;
+  position: relative;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--glow-blue);
+}
+
+.logo-icon .material-icons-round {
+  color: var(--text-inverse);
+  font-size: 20px;
+}
+
+.logo-text {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  letter-spacing: -.01em;
+  flex: 1;
+}
+
+.collapse-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t-fast);
+  flex-shrink: 0;
+}
+
+.collapse-btn:hover {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.collapse-btn .material-icons-round {
+  font-size: 16px;
+}
+
+/* ── User ── */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-user-mini {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent-violet));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .875rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.user-name {
+  font-size: .83rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: .68rem !important;
+  padding: 2px 7px !important;
+}
+
+/* ── Nav ── */
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.nav-group {
+  margin-bottom: 6px;
+}
+
+.nav-label {
+  display: block;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  padding: 10px 10px 4px;
+  white-space: nowrap;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: .875rem;
+  font-weight: 500;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.nav-item.active {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-color: rgba(56, 189, 248, 0.2);
+  font-weight: 600;
+}
+
+.nav-item.active .nav-icon {
+  color: var(--primary);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  background: var(--primary);
+  border-radius: 0 3px 3px 0;
+}
+
+.nav-icon {
+  font-size: 20px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color var(--t-fast);
+}
+
+.nav-item:hover .nav-icon {
+  color: var(--text-primary);
+}
+
+.nav-text {
+  flex: 1;
+}
+
+.nav-badge {
+  background: var(--primary);
+  color: var(--text-inverse);
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ── Footer ── */
+.sidebar-footer {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-footer .nav-item {
+  color: var(--danger);
+}
+
+.sidebar-footer .nav-item:hover {
+  background: rgba(239, 68, 68, .1);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, .2);
+}
+
+.sidebar-footer .nav-icon {
+  color: var(--danger) !important;
+}
+
+/* Collapsed state: hide text labels */
+.collapsed .nav-label {
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.collapsed .logo-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.collapsed .collapse-btn {
+  position: absolute;
+  right: -13px;
+  top: 22px;
+  z-index: 2;
+}
+
+.collapsed .nav-item {
+  justify-content: center;
+  padding: 10px;
+}
+
+/* ── Mobile Overlay ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  :host {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 300;
+    pointer-events: none;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width) !important;
+    transform: translateX(-100%);
+    transition: transform var(--t-med), box-shadow var(--t-med);
+    pointer-events: auto;
+    z-index: 300;
+    box-shadow: none;
+  }
+
+  /* When NOT collapsed = open on mobile */
+  .sidebar:not(.collapsed) {
+    transform: translateX(0);
+    box-shadow: 4px 0 40px rgba(0, 0, 0, .45);
+  }
+
+  /* Backdrop */
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 15, 30, .65);
+    backdrop-filter: blur(3px);
+    z-index: 299;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-med);
+  }
+
+  .sidebar:not(.collapsed) ~ .mobile-backdrop,
+  .mobile-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Collapse button → show as close X on mobile */
+  .collapsed .collapse-btn {
+    position: static;
+    right: auto;
+    top: auto;
+  }
+}

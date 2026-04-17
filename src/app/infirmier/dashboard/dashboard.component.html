@@ -1,0 +1,88 @@
+<div class="page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Dashboard Infirmier</h1>
+      <p>Bienvenue {{ userName }} · {{ today }}</p>
+    </div>
+    <div class="flex gap-12">
+      <button class="btn btn-primary" routerLink="/infirmier/observations">
+        <span class="material-icons">assignment</span> Nouvelle observation
+      </button>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-danger" *ngIf="error">
+    <span class="material-icons">error</span>
+    <div>
+      <strong>Erreur</strong>
+      <p style="margin: 4px 0 0 0;">{{ error }}</p>
+      <button class="btn btn-sm btn-outline" (click)="retry()" style="margin-top: 8px;">
+        <span class="material-icons" style="font-size: 16px;">refresh</span> Réessayer
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <app-loading-spinner [isLoading]="loading" message="Chargement du dashboard..."></app-loading-spinner>
+
+  <ng-container *ngIf="!loading">
+    <!-- KPIs -->
+    <div class="stats-grid stagger">
+      <div class="stat-card slide-up" *ngFor="let s of stats">
+        <div class="icon" [style.background]="s.bg" [style.color]="s.color">
+          <span class="material-icons">{{ s.icon }}</span>
+        </div>
+        <h2>{{ s.value }}</h2>
+        <p>{{ s.label }}</p>
+        <span class="badge badge-success" *ngIf="s.sub">{{ s.sub }}</span>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="grid-2 mt-20">
+
+      <!-- Recent Observations -->
+      <div class="card slide-up">
+        <div class="section-title">Observations récentes</div>
+        <div *ngIf="recentObservations.length === 0" class="text-center" style="padding: 24px;">
+          <span class="material-icons" style="font-size: 48px; color: var(--text-muted); opacity: 0.5;">assignment</span>
+          <p style="color: var(--text-muted); margin-top: 8px;">Aucune observation récente</p>
+        </div>
+        <ul class="timeline" *ngIf="recentObservations.length > 0">
+          <li *ngFor="let o of recentObservations">
+            <p style="margin:0;font-size:.875rem;font-weight:600">{{ o.contenu }}</p>
+            <small>{{ o.date }}</small>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Recent DMEs -->
+      <div class="card slide-up">
+        <div class="section-title">Dossiers récents</div>
+        <div *ngIf="recentDmes.length === 0" class="text-center" style="padding: 24px;">
+          <span class="material-icons" style="font-size: 48px; color: var(--text-muted); opacity: 0.5;">folder_shared</span>
+          <p style="color: var(--text-muted); margin-top: 8px;">Aucun dossier récent</p>
+        </div>
+        <ul class="timeline" *ngIf="recentDmes.length > 0">
+          <li *ngFor="let d of recentDmes">
+            <p style="margin:0;font-size:.875rem;font-weight:600">{{ d.patient }}</p>
+            <small>DME #{{ d.id }}</small>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section-title mt-20">Actions rapides</div>
+    <div class="stats-grid stagger" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+      <a *ngFor="let a of actions" [routerLink]="a.route" class="card slide-up text-center"
+         style="padding: 20px; text-decoration: none; cursor: pointer;">
+        <span class="material-icons" [style.color]="a.color" style="font-size: 32px;">{{ a.icon }}</span>
+        <p style="margin: 8px 0 0; font-weight: 600;">{{ a.label }}</p>
+      </a>
+    </div>
+  </ng-container>
+</div>

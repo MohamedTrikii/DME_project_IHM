@@ -1,0 +1,50 @@
+.register-page {
+	min-height: 100vh;
+	display: grid;
+	place-items: center;
+	padding: 24px;
+	background:
+		radial-gradient(circle at 10% 10%, rgba(2, 132, 199, 0.12), transparent 40%),
+		radial-gradient(circle at 90% 80%, rgba(8, 145, 178, 0.15), transparent 38%),
+		var(--bg-base);
+}
+
+.register-card {
+	width: 100%;
+	max-width: 560px;
+	padding: 28px;
+}
+
+.register-head {
+	margin-bottom: 16px;
+}
+
+.register-head p {
+	color: var(--text-secondary);
+}
+
+.grid-2 {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.register-btn {
+	width: 100%;
+	margin-top: 10px;
+}
+
+.register-foot {
+	margin-top: 14px;
+	text-align: center;
+}
+
+@media (max-width: 640px) {
+	.register-card {
+		padding: 20px;
+	}
+
+	.grid-2 {
+		grid-template-columns: 1fr;
+	}
+}

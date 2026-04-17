@@ -1,0 +1,32 @@
+<div class="page fade-in">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Messages</h1>
+      <p>Conversation avec vos soignants</p>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);font-weight:600;">
+      Fil de discussion
+    </div>
+
+    <div style="padding:20px;min-height:260px;max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#f8fafc,#ffffff);">
+      <div *ngFor="let msg of messages" [style.align-self]="msg.from === 'Moi' ? 'flex-end' : 'flex-start'" style="max-width:75%;">
+        <div [style.background]="msg.from === 'Moi' ? 'var(--primary-color)' : 'var(--surface-2)'"
+             [style.color]="msg.from === 'Moi' ? '#fff' : 'var(--text-primary)'"
+             style="padding:10px 14px;border-radius:14px;box-shadow:var(--shadow-sm);">
+          <div style="font-size:12px;opacity:.75;margin-bottom:2px;">{{ msg.from }}</div>
+          <div>{{ msg.text }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:16px 20px;border-top:1px solid var(--border-color);display:flex;gap:10px;">
+      <input [(ngModel)]="newMsg" placeholder="Écrire un message..." style="flex:1;" />
+      <button class="btn btn-primary" (click)="send()" [disabled]="!newMsg.trim()">
+        <span class="material-icons" style="font-size:16px">send</span> Envoyer
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,46 @@
+<div class="page fade-in">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mes Ordonnances</h1>
+      <p>{{ ordonnances.length }} ordonnance(s)</p>
+    </div>
+    <button class="btn btn-outline btn-sm" (click)="loadOrdonnances()">
+      <span class="material-icons" style="font-size:16px">refresh</span> Actualiser
+    </button>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" style="margin-bottom:20px;">
+    <span class="material-icons">error</span> {{ error }}
+  </div>
+
+  <app-loading-spinner [isLoading]="loading" message="Chargement des ordonnances..."></app-loading-spinner>
+
+  <div class="table-wrap" *ngIf="!loading">
+    <table class="dme-table">
+      <thead>
+        <tr>
+          <th>Médicament</th>
+          <th>Posologie</th>
+          <th>Durée</th>
+          <th>Date limite</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of ordonnances">
+          <td style="font-weight:600;">{{ o.medicament || 'N/A' }}</td>
+          <td>{{ o.posologie || '—' }}</td>
+          <td>{{ o.duree || '—' }}</td>
+          <td style="white-space:nowrap;">{{ o.dateLimite ? (o.dateLimite | date:'dd/MM/yyyy') : '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center" style="padding:48px;" *ngIf="ordonnances.length === 0">
+      <span class="material-icons" style="font-size:64px;color:var(--text-muted);opacity:.4;">medication</span>
+      <h3 style="margin-top:16px;">Aucune ordonnance</h3>
+      <p style="color:var(--text-muted);">Aucune ordonnance enregistrée pour votre dossier.</p>
+    </div>
+  </div>
+
+</div>
