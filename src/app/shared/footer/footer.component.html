@@ -1,12 +1,38 @@
-<footer class="footer">
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <span class="material-icons-round">local_hospital</span>
-      <span>DME Platform</span>
+<footer class="footer-enhanced" role="contentinfo">
+  <div class="footer-top">
+    <div class="footer-brand-section">
+      <div class="brand">
+        <span class="material-icons-round" aria-hidden="true">local_hospital</span>
+        <span>DME Platform</span>
+      </div>
+      <p class="tagline">Dossier Médical Électronique — Plateforme sécurisée de gestion des dossiers médicaux, conforme aux normes de santé.</p>
     </div>
-    <span class="footer-sep">·</span>
-    <span>© 2026 Tous droits réservés</span>
-    <span class="footer-sep">·</span>
-    <span class="footer-version">v2.0.0</span>
+    <div class="footer-col">
+      <h4>Plateforme</h4>
+      <ul>
+        <li><a routerLink="." aria-label="Dashboard">Dashboard</a></li>
+        <li><a routerLink="." aria-label="Documentation">Documentation</a></li>
+        <li><a routerLink="." aria-label="API">API</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Sécurité</h4>
+      <ul>
+        <li><a routerLink="." aria-label="Politique de confidentialité">Confidentialité</a></li>
+        <li><a routerLink="." aria-label="Conditions d'utilisation">CGU</a></li>
+        <li><a routerLink="." aria-label="Conformité RGPD">RGPD</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contact</h4>
+      <ul>
+        <li><a href="mailto:support@dme-platform.fr" aria-label="Email de support">support&#64;dme-platform.fr</a></li>
+        <li><a routerLink="." aria-label="Centre d'aide">Centre d'aide</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; {{ currentYear }} DME Platform — Tous droits réservés</span>
+    <span class="version">v3.0.0</span>
   </div>
 </footer>

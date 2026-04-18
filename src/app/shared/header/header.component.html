@@ -1,12 +1,12 @@
-<header class="header glass">
+<header class="header glass" role="banner">
   <!-- Left: breadcrumb / page title -->
   <div class="header-left">
-    <button class="menu-btn" (click)="toggleMenu()" title="Toggle sidebar">
-      <span class="material-icons-round">menu</span>
+    <button class="menu-btn" (click)="toggleMenu()" title="Toggle sidebar" aria-label="Ouvrir/fermer le menu">
+      <span class="material-icons-round" aria-hidden="true">menu</span>
     </button>
-    <div class="breadcrumb">
-      <span class="material-icons-round bc-icon">local_hospital</span>
-      <span class="bc-label">{{ pageTitle }}</span>
+    <div class="header-title-area">
+      <app-breadcrumb></app-breadcrumb>
+      <span class="page-label">{{ pageTitle }}</span>
     </div>
   </div>
 
@@ -14,52 +14,62 @@
   <div class="header-right">
 
     <!-- Search -->
-    <div class="h-search" [class.open]="searchOpen">
-      <span class="material-icons-round">search</span>
-      <input #searchInput type="text" placeholder="Rechercher..." [(ngModel)]="searchQuery" (blur)="closeSearch()" />
-      <button class="search-trigger" (click)="openSearch()" *ngIf="!searchOpen">
-        <span class="material-icons-round">search</span>
+    <div class="h-search" [class.open]="searchOpen" role="search">
+      <span class="material-icons-round" aria-hidden="true">search</span>
+      <input #searchInput type="text" placeholder="Rechercher..." [(ngModel)]="searchQuery"
+        (blur)="closeSearch()" (keyup.enter)="performSearch()" (keyup.escape)="clearSearch()"
+        aria-label="Recherche globale" />
+      <button class="search-trigger" (click)="openSearch()" *ngIf="!searchOpen" aria-label="Ouvrir la recherche">
+        <span class="material-icons-round" aria-hidden="true">search</span>
+      </button>
+      <button class="search-clear" (click)="clearSearch()" *ngIf="searchOpen && searchQuery" aria-label="Effacer la recherche">
+        <span class="material-icons-round" aria-hidden="true">close</span>
       </button>
     </div>
 
     <!-- Notifications -->
-    <div class="icon-btn notif-btn" (click)="showNotif = !showNotif">
-      <span class="material-icons-round">notifications_outlined</span>
-      <span class="notif-dot" *ngIf="hasNotif"></span>
-      <!-- Dropdown -->
-      <div class="notif-dropdown" *ngIf="showNotif" (click)="$event.stopPropagation()">
+    <div class="notif-wrapper">
+      <button class="icon-btn notif-btn" (click)="showNotif = !showNotif" type="button"
+        [attr.aria-expanded]="showNotif" aria-label="Notifications">
+        <span class="material-icons-round" aria-hidden="true">notifications_outlined</span>
+        <span class="notif-dot" *ngIf="hasNotif" aria-hidden="true"></span>
+        <span class="sr-only" *ngIf="hasNotif">{{ notifications.length }} nouvelles notifications</span>
+      </button>
+      <div class="notif-dropdown" *ngIf="showNotif" (keydown.escape)="showNotif = false" aria-label="Liste des notifications">
         <div class="nd-header">
           <span>Notifications</span>
           <button class="btn btn-sm btn-outline" (click)="clearNotifs()">Tout lire</button>
         </div>
-        <div class="nd-item" *ngFor="let n of notifications">
-          <span class="material-icons-round nd-icon">{{ n.icon }}</span>
+        <div class="nd-item" *ngFor="let n of notifications" role="menuitem">
+          <span class="material-icons-round nd-icon" aria-hidden="true">{{ n.icon }}</span>
           <div>
             <p class="nd-msg">{{ n.message }}</p>
             <small>{{ n.time }}</small>
           </div>
         </div>
         <div class="nd-empty" *ngIf="notifications.length === 0">
-          <span class="material-icons-round">check_circle</span>
+          <span class="material-icons-round" aria-hidden="true">check_circle</span>
           Aucune notification
         </div>
       </div>
     </div>
 
     <!-- Theme Toggle -->
-    <button class="icon-btn theme-toggle" (click)="toggleTheme()" [title]="'Mode ' + (currentTheme === 'dark' ? 'Clair' : 'Sombre')">
-      <span class="material-icons-round">{{ currentTheme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+    <button class="icon-btn theme-toggle" (click)="toggleTheme()"
+      [title]="'Mode ' + (currentTheme === 'dark' ? 'Clair' : 'Sombre')"
+      [attr.aria-label]="'Passer en mode ' + (currentTheme === 'dark' ? 'clair' : 'sombre')">
+      <span class="material-icons-round" aria-hidden="true">{{ currentTheme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
     </button>
 
     <!-- Clock -->
-    <div class="h-clock">
-      <span class="material-icons-round">schedule</span>
+    <div class="h-clock" aria-label="Heure actuelle" role="timer">
+      <span class="material-icons-round" aria-hidden="true">schedule</span>
       <span>{{ currentTime }}</span>
     </div>
 
     <!-- User -->
     <div class="h-user">
-      <div class="h-avatar">{{ userInitial }}</div>
+      <div class="h-avatar" aria-hidden="true">{{ userInitial }}</div>
       <div class="h-user-info">
         <span class="h-user-name">{{ userName }}</span>
         <span class="h-user-role">{{ userRole }}</span>

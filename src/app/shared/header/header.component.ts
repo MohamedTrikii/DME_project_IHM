@@ -126,6 +126,23 @@ export class HeaderComponent implements OnInit, OnDestroy {
   toggleMenu() { this.sidebarService.emit(); }
   clearNotifs() { this.notifications = []; this.hasNotif = false; this.showNotif = false; }
 
+  clearSearch() {
+    this.searchQuery = '';
+    this.searchOpen = false;
+  }
+
+  performSearch() {
+    if (!this.searchQuery.trim()) return;
+    // Navigate to the appropriate search route based on role
+    const role = this.authService.getRole();
+    if (role === 'medecin') {
+      this.router.navigate(['/medecin/search-dme'], { queryParams: { q: this.searchQuery.trim() } });
+    } else if (role === 'admin') {
+      this.router.navigate(['/admin/users'], { queryParams: { q: this.searchQuery.trim() } });
+    }
+    this.searchOpen = false;
+  }
+
   toggleTheme() {
     this.themeService.toggleTheme();
   }

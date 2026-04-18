@@ -2,8 +2,6 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-
 // Angular Material
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +16,7 @@ import { NotificationCenterComponent } from './components/notification-center/no
 import { PaginationComponent } from './components/pagination/pagination.component';
 import { LoadingSpinnerComponent } from './components/loading-spinner/loading-spinner.component';
 import { EmptyStateComponent } from './components/empty-state/empty-state.component';
+import { BreadcrumbComponent } from './components/breadcrumb/breadcrumb.component';
 
 @NgModule({
   declarations: [
@@ -27,7 +26,8 @@ import { EmptyStateComponent } from './components/empty-state/empty-state.compon
     NotificationCenterComponent,
     PaginationComponent,
     LoadingSpinnerComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    BreadcrumbComponent
   ],
   imports: [
     CommonModule,
@@ -47,6 +47,7 @@ import { EmptyStateComponent } from './components/empty-state/empty-state.compon
     PaginationComponent,
     LoadingSpinnerComponent,
     EmptyStateComponent,
+    BreadcrumbComponent,
 
     MatCardModule,
     MatButtonModule,

@@ -7,8 +7,8 @@
       <span class="material-icons-round">local_hospital</span>
     </div>
     <span class="logo-text" *ngIf="!collapsed">DME Platform</span>
-    <button class="collapse-btn" (click)="toggle()" [title]="collapsed ? 'Expand' : 'Collapse'">
-      <span class="material-icons-round">{{ collapsed ? 'chevron_right' : 'chevron_left' }}</span>
+    <button class="collapse-btn" (click)="toggle()" [attr.aria-label]="collapsed ? 'Développer le menu' : 'Réduire le menu'" [attr.aria-expanded]="!collapsed">
+      <span class="material-icons-round" aria-hidden="true">{{ collapsed ? 'chevron_right' : 'chevron_left' }}</span>
     </button>
   </div>
 
@@ -25,14 +25,14 @@
   </div>
 
   <!-- Nav -->
-  <nav class="sidebar-nav">
+  <nav class="sidebar-nav" aria-label="Navigation principale">
     <div class="nav-group" *ngFor="let group of navGroups">
       <span class="nav-label" *ngIf="!collapsed">{{ group.label }}</span>
-      <a class="nav-item" *ngFor="let item of group.items" [routerLink]="item.route" routerLinkActive="active"
-        [title]="collapsed ? item.label : ''">
-        <span class="material-icons-round nav-icon">{{ item.icon }}</span>
+      <a class="nav-item" *ngFor="let item of group.items" [routerLink]="item.route" routerLinkActive="active" #rla="routerLinkActive"
+        [title]="collapsed ? item.label : ''" [attr.aria-current]="rla.isActive ? 'page' : null">
+        <span class="material-icons-round nav-icon" aria-hidden="true">{{ item.icon }}</span>
         <span class="nav-text" *ngIf="!collapsed">{{ item.label }}</span>
-        <span class="nav-badge" *ngIf="item.badge && !collapsed">{{ item.badge }}</span>
+        <span class="nav-badge" *ngIf="item.badge && !collapsed" [attr.aria-label]="item.badge + ' notifications'">{{ item.badge }}</span>
       </a>
     </div>
   </nav>
@@ -47,4 +47,4 @@
 </aside>
 
 <!-- Mobile backdrop -->
-<div class="mobile-backdrop" [class.visible]="!collapsed" (click)="toggle()"></div>
+<div class="mobile-backdrop" [class.visible]="!collapsed" (click)="toggle()" (keydown)="$event.key === 'Escape' && toggle()"></div>
