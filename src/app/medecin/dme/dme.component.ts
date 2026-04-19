@@ -29,14 +29,20 @@ export class DmeComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.patientId = this.route.snapshot.params['id'] || '';
-    if (this.patientId) {
-      this.loadDme(this.patientId);
-    } else {
-      this.error = 'ID du patient non spécifié';
-      this.loading = false;
-    }
+  const user = localStorage.getItem('user');
+  const parsedUser = user ? JSON.parse(user) : null;
+
+  const patientId = parsedUser?._id;
+
+  console.log("PATIENT ID:", patientId);
+
+  if (patientId) {
+    this.loadDme(patientId);
+  } else {
+    this.error = 'Utilisateur non connecté';
+    this.loading = false;
   }
+}
 
   loadDme(patientId: string): void {
     this.loading = true;

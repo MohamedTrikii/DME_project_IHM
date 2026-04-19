@@ -7,26 +7,37 @@
   </div>
 
   <div class="card" style="padding:0;overflow:hidden;">
+    
     <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);font-weight:600;">
       Fil de discussion
     </div>
 
-    <div style="padding:20px;min-height:260px;max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#f8fafc,#ffffff);">
-      <div *ngFor="let msg of messages" [style.align-self]="msg.from === 'Moi' ? 'flex-end' : 'flex-start'" style="max-width:75%;">
-        <div [style.background]="msg.from === 'Moi' ? 'var(--primary-color)' : 'var(--surface-2)'"
-             [style.color]="msg.from === 'Moi' ? '#fff' : 'var(--text-primary)'"
-             style="padding:10px 14px;border-radius:14px;box-shadow:var(--shadow-sm);">
-          <div style="font-size:12px;opacity:.75;margin-bottom:2px;">{{ msg.from }}</div>
-          <div>{{ msg.text }}</div>
+    <!-- CHAT -->
+    <div class="chat-container">
+
+      <div *ngFor="let msg of messages" 
+           class="msg" 
+           [ngClass]="msg.from === 'Moi' ? 'me' : 'other'">
+
+        <div class="bubble">
+          <div class="sender">{{ msg.from }}</div>
+          <div class="text">{{ msg.text }}</div>
         </div>
+
       </div>
+
     </div>
 
-    <div style="padding:16px 20px;border-top:1px solid var(--border-color);display:flex;gap:10px;">
-      <input [(ngModel)]="newMsg" placeholder="Écrire un message..." style="flex:1;" />
-      <button class="btn btn-primary" (click)="send()" [disabled]="!newMsg.trim()">
-        <span class="material-icons" style="font-size:16px">send</span> Envoyer
+    <!-- INPUT -->
+    <div class="input-box">
+      <input [(ngModel)]="newMsg" placeholder="Écrire un message..." />
+      
+      <button class="btn btn-primary" 
+              (click)="send()" 
+              [disabled]="!newMsg.trim()">
+        Envoyer
       </button>
     </div>
+
   </div>
 </div>

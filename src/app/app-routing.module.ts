@@ -121,7 +121,9 @@ const routes: Routes = [
 
       { path: 'create-analyse-request', component: CreateAnalyseRequestComponent },
 
-      { path: 'search-dme', component: SearchDmeComponent }
+      { path: 'search-dme', component: SearchDmeComponent },
+
+      { path: 'messages', component: MessagesComponent }
     ]
   },
 

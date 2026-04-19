@@ -27,29 +27,33 @@ export class DmeComponent implements OnInit {
   }
 
   loadDme(): void {
-    const userId = this.authService.getCurrentUser()?._id;
-    if (!userId) {
-      this.error = 'Utilisateur non connecté.';
-      return;
-    }
+  const user = localStorage.getItem('user');
+  const parsedUser = user ? JSON.parse(user) : null;
 
-    this.loading = true;
-    this.error = '';
+  const userId = parsedUser?.id || parsedUser?._id;
 
-    this.medicalDataService.getDmeByPatientId(userId).subscribe({
-      next: (data) => {
-        this.dme = data;
-        this.consultations = data?.consultations || [];
-        this.ordonnances = data?.ordonnances || [];
-        this.demandes = data?.demandes || [];
-        this.resultats = data?.resultats || [];
-        this.observations = data?.observations || [];
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Impossible de charger le dossier médical.';
-        this.loading = false;
-      }
-    });
+  if (!userId) {
+    this.error = 'Utilisateur non connecté.';
+    return;
   }
+
+  this.loading = true;
+  this.error = '';
+
+  this.medicalDataService.getDmeByPatientId(userId).subscribe({
+    next: (data) => {
+      this.dme = data;
+      this.consultations = data?.consultations || [];
+      this.ordonnances = data?.ordonnances || [];
+      this.demandes = data?.demandes || [];
+      this.resultats = data?.resultats || [];
+      this.observations = data?.observations || [];
+      this.loading = false;
+    },
+    error: (err) => {
+      this.error = err?.error?.message || 'Impossible de charger le dossier médical.';
+      this.loading = false;
+    }
+  });
+}
 }

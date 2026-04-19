@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 const consultationSchema = new mongoose.Schema({
   date: {
@@ -32,6 +31,5 @@ const consultationSchema = new mongoose.Schema({
     required: true
   }
 });
-consultationSchema.plugin(AutoIncrement, { inc_field: 'consultationId', parallel_hooks: false });
 
 module.exports = mongoose.model('Consultation', consultationSchema);

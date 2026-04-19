@@ -47,23 +47,46 @@ export class LoginComponent {
 
   login() {
     this.errorMsg = '';
+
     if (!this.email || !this.password) {
       this.errorMsg = 'Veuillez remplir tous les champs.';
       return;
     }
+
     this.isLoading = true;
+
     this.authService
       .login({ email: this.email.trim(), mot_de_passe: this.password })
       .subscribe({
-        next: (user) => {
+        next: (response: any) => {
+          console.log('LOGIN RESPONSE:', response);
           this.isLoading = false;
 
-          const target = this.redirectUrl || this.authService.getDashboardRoute(user.role as UserRole);
+          // ✅ تخزين user
+          const user = response.user || response;
+          localStorage.setItem('user', JSON.stringify(user));
+
+          // ✅ تخزين token
+          if (response.token) {
+            localStorage.setItem('token', response.token);
+          }
+
+          // ✅ تحديد role
+          const role = user.role;
+
+          // ✅ redirection
+          const target =
+            this.redirectUrl ||
+            this.authService.getDashboardRoute(role as UserRole);
+
           this.router.navigateByUrl(target);
         },
+
         error: (error) => {
           this.isLoading = false;
-          this.errorMsg = error?.error?.message || 'Connexion impossible. Verifiez vos identifiants.';
+          this.errorMsg =
+            error?.error?.message ||
+            'Connexion impossible. Vérifiez vos identifiants.';
         }
       });
   }

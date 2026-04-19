@@ -45,6 +45,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     ]},
     { label: 'Actions', items: [
       { icon: 'add_circle',        label: 'Consultation',   route: '/medecin/add-consultation' },
+      { icon: 'forum', label: 'Messages', route: '/medecin/messages' },
       { icon: 'receipt_long',      label: 'Ordonnance',     route: '/medecin/create-ordonnance' },
       { icon: 'biotech',           label: 'Analyse',        route: '/medecin/create-analyse-request' },
       { icon: 'person_add',        label: 'Creer patient',  route: '/medecin/create-patient' },

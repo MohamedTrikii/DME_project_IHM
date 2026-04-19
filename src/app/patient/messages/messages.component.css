@@ -1,30 +1,96 @@
-.chat-box {
-  background: var(--bg-surface);
-  border-radius: 12px;
-  padding: 15px;
-  height: 60vh;
+/* container */
+.chat-container {
+  padding: 20px;
+  min-height: 260px;
+  max-height: 360px;
   overflow-y: auto;
-  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-surface);
 }
+
+/* message wrapper */
 .msg {
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 12px;
-  background: var(--bg-card2);
-  max-width: 70%;
+  max-width: 75%;
+  display: flex;
+  flex-direction: column;
 }
+
+/* alignment */
 .msg.me {
-  background: var(--primary);
-  color: var(--text-inverse);
-  margin-left: auto;
+  align-self: flex-end;
 }
+
+.msg.other {
+  align-self: flex-start;
+}
+
+/* bubble base */
+.bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  word-wrap: break-word;
+  transition: 0.2s;
+}
+
+/* message mta3ek */
+.msg.me .bubble {
+  background: var(--primary); /* لازم يكون لون واضح */
+  color: #ffffff;
+}
+
+/* message elli jeya */
+.msg.other .bubble {
+  background: var(--bg-card2);
+  color: var(--text-primary);
+}
+
+/* sender name */
+.sender {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-bottom: 3px;
+}
+
+/* text */
+.text {
+  color:inherit;
+  line-height: 1.4;
+}
+
+/* input box */
 .input-box {
   display: flex;
   gap: 10px;
+  padding: 10px 0;
 }
+
 .input-box input {
   flex: 1;
   padding: 10px;
   border-radius: 8px;
   border: 1px solid var(--border-hover);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.input-box input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* button */
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
 }

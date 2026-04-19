@@ -13,11 +13,12 @@ app.disable('x-powered-by');
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:4200' }));
 app.use(express.json());
 
-// Disable query buffering so DB issues fail fast instead of timing out later.
+// Disable query buffering
 mongoose.set('bufferCommands', false);
 
 let isMongoConnected = false;
 
+// 🔌 Mongo connection with retry
 async function connectMongoWithRetry() {
     try {
         await mongoose.connect(MONGODB_URI, {
@@ -33,7 +34,10 @@ async function connectMongoWithRetry() {
     }
 }
 
-// ✅ Models - MUST be before routes - utilisateur MUST be first
+//////////////////////////////////////////////////////////////////
+// ✅ MODELS (لازم قبل routes)
+//////////////////////////////////////////////////////////////////
+
 require('./models/utilisateur.model');
 require('./models/admin.model');
 require('./models/patient.model');
@@ -46,8 +50,12 @@ require('./models/ordonnance.model');
 require('./models/demandeAnalyse.model');
 require('./models/resultat.model');
 require('./models/observation.model');
+require('./models/message.model'); // ✅ مهم
 
-// Routes
+//////////////////////////////////////////////////////////////////
+// ✅ ROUTES
+//////////////////////////////////////////////////////////////////
+
 const authRoutes         = require('./routes/auth.routes');
 const adminRoutes        = require('./routes/admin.routes');
 const patientRoutes      = require('./routes/patient.routes');
@@ -59,8 +67,12 @@ const ordonnanceRoutes   = require('./routes/ordonnance.route');
 const resultatRoutes     = require('./routes/resultat.routes');
 const infirmierRoutes    = require('./routes/infirmier.routes');
 const laboratoireRoutes  = require('./routes/laboratoire.routes');
+const messageRoutes      = require('./routes/message.routes'); // ✅ هنا
 
-// Return a clear error while DB is unavailable.
+//////////////////////////////////////////////////////////////////
+// ⚠️ DB CHECK (قبل API)
+//////////////////////////////////////////////////////////////////
+
 app.use('/api', (req, res, next) => {
     if (!isMongoConnected) {
         return res.status(503).json({
@@ -69,6 +81,10 @@ app.use('/api', (req, res, next) => {
     }
     next();
 });
+
+//////////////////////////////////////////////////////////////////
+// 🔗 REGISTER ROUTES
+//////////////////////////////////////////////////////////////////
 
 app.use('/api/auth',         authRoutes);
 app.use('/api/admin',        adminRoutes);
@@ -81,10 +97,18 @@ app.use('/api/ordonnance',   ordonnanceRoutes);
 app.use('/api/resultat',     resultatRoutes);
 app.use('/api/infirmier',    infirmierRoutes);
 app.use('/api/laboratoire',  laboratoireRoutes);
+app.use('/api/messages',     messageRoutes); // ✅ المهم
 
-// Serve Angular app build in production-like local mode.
+//////////////////////////////////////////////////////////////////
+// 🌐 FRONTEND STATIC
+//////////////////////////////////////////////////////////////////
+
 const frontendDistPath = path.join(__dirname, 'public');
 app.use(express.static(frontendDistPath));
+
+//////////////////////////////////////////////////////////////////
+// ❌ 404 HANDLER (بعد routes)
+//////////////////////////////////////////////////////////////////
 
 app.use((req, res, next) => {
     if (req.path.startsWith('/api')) {
@@ -98,11 +122,18 @@ app.use((req, res, next) => {
     next();
 });
 
-// Error handler
+//////////////////////////////////////////////////////////////////
+// 🚨 ERROR HANDLER
+//////////////////////////////////////////////////////////////////
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Something went wrong' });
 });
+
+//////////////////////////////////////////////////////////////////
+// 🚀 START SERVER
+//////////////////////////////////////////////////////////////////
 
 connectMongoWithRetry();
 
