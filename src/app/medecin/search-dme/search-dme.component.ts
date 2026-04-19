@@ -52,19 +52,8 @@ export class SearchDmeComponent implements OnInit {
   }
 
   viewDme(patient: Patient): void {
-    if (patient.dme) {
-        this.router.navigate(['/medecin/dme', patient._id]);
-    } else {
-      // Charger le DME du patient
-      this.patientService.getDmeByPatientId(patient._id).subscribe({
-        next: (dme) => {
-            this.router.navigate(['/medecin/dme', patient._id]);
-        },
-        error: () => {
-          this.error = 'DME non trouvé pour ce patient';
-        }
-      });
-    }
+    // Toujours naviguer avec patientId en query param pour compatibilité DmeComponent
+    this.router.navigate(['/medecin/dme'], { queryParams: { patientId: patient._id } });
   }
 
 }

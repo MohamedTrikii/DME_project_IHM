@@ -14,55 +14,54 @@ import { SidebarService } from '../../core/services/sidebar.service';
 export class HeaderComponent implements OnInit, OnDestroy {
   pageTitle = 'DME Platform';
   currentTime = '';
+  currentDate = '';
   userName = 'Utilisateur';
   userInitial = 'U';
   userRole = 'Patient';
-  searchOpen = false;
-  searchQuery = '';
-  showNotif = false;
-  hasNotif = true;
   currentTheme: 'light' | 'dark' = 'light';
+  showCalendar = false;
+  calendarDays: { date: Date; isCurrentMonth: boolean; isToday: boolean; dayNumber: number }[] = [];
+  selectedMonth = new Date();
+  monthYear = '';
   private clockInterval: any;
   private clickListener: any;
   private readonly destroy$ = new Subject<void>();
 
-  notifications = [
-    { icon: 'event', message: 'Rendez-vous demain à 10h00', time: 'il y a 5 min' },
-    { icon: 'science', message: 'Résultats analyses disponibles', time: 'il y a 1h' },
-    { icon: 'medication', message: 'Nouvelle ordonnance émise', time: 'il y a 3h' },
-  ];
-
   private readonly routeTitles: Record<string, string> = {
-    '/patient/dashboard': 'Dashboard Patient',
+    '/patient/dashboard': 'Tableau de bord Patient',
     '/patient/consultations': 'Mes Consultations',
     '/patient/analyses': 'Mes Analyses',
     '/patient/ordonnances': 'Mes Ordonnances',
     '/patient/dme': 'Mon Dossier Médical',
-    '/patient/messages': 'Messages',
+    '/patient/messages': 'Messagerie',
     '/patient/access-management': 'Gestion des Accès',
     '/patient/profile': 'Mon Profil',
-    '/medecin/dashboard': 'Dashboard Médecin',
+    '/medecin/dashboard': 'Tableau de bord Médecin',
     '/medecin/patients': 'Liste des Patients',
-    '/medecin/dme': 'Dossier Médical',
+    '/medecin/dme': 'Dossier Médical (Patient)',
     '/medecin/add-consultation': 'Nouvelle Consultation',
-    '/medecin/create-ordonnance': 'Créer Ordonnance',
-    '/medecin/create-analyse-request': 'Demande Analyse',
-    '/medecin/create-patient': 'Nouveau Patient',
+    '/medecin/create-ordonnance': 'Créer une Ordonnance',
+    '/medecin/create-analyse-request': 'Demande d\'Analyse',
+    '/medecin/create-patient': 'Enregistrer Nouveau Patient',
     '/medecin/search-dme': 'Recherche DME',
-    '/admin/dashboard': 'Dashboard Admin',
-    '/admin/users': 'Utilisateurs',
+    '/medecin/messages': 'Messagerie',
+    '/admin/dashboard': 'Tableau de bord Admin',
+    '/admin/users': 'Gestion Utilisateurs',
     '/admin/add-user': 'Ajouter Utilisateur',
     '/admin/logs': 'Journaux Système',
-    '/admin/audit-logs': 'Audit Sécurité',
-    '/admin/archive': 'Archivage',
-    '/infirmier/dashboard': 'Dashboard Infirmier',
+    '/admin/audit-logs': 'Audit de Sécurité',
+    '/admin/archive': 'Archives Système',
+    '/admin/messages': 'Messagerie',
+    '/infirmier/dashboard': 'Tableau de bord Infirmier',
     '/infirmier/dossier': 'Dossier Patient',
-    '/infirmier/historique': 'Historique',
-    '/infirmier/observations': 'Observations',
-    '/laboratoire/dashboard': 'Dashboard Laboratoire',
-    '/laboratoire/demandes': 'Demandes Analyse',
-    '/laboratoire/rendezvous': 'Rendezvous',
-    '/laboratoire/upload-result': 'Depot Resultat',
+    '/infirmier/historique': 'Historique d\'Interventions',
+    '/infirmier/observations': 'Nouvelle Observation',
+    '/infirmier/messages': 'Messagerie',
+    '/laboratoire/dashboard': 'Tableau de bord Laboratoire',
+    '/laboratoire/demandes': 'Demandes d\'Analyses',
+    '/laboratoire/rendezvous': 'Prises de Sang / RDV',
+    '/laboratoire/upload-result': 'Dépôt de Résultats',
+    '/laboratoire/messages': 'Messagerie'
   };
 
   constructor(
@@ -82,8 +81,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
     });
     this.updateTitle();
     this.detectUser();
+    this.generateCalendar();
+    
+    // Close calendar when clicking outside
     this.clickListener = this.renderer.listen('document', 'click', () => {
-      if (this.showNotif) this.showNotif = false;
+      if (this.showCalendar) this.showCalendar = false;
     });
 
     // Subscribe to theme changes
@@ -95,6 +97,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   updateClock() {
     const now = new Date();
     this.currentTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    this.currentDate = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
   updateTitle() {
@@ -107,41 +110,92 @@ export class HeaderComponent implements OnInit, OnDestroy {
     const role = this.authService.getRole();
 
     if (user) {
-      this.userName = `${user.prenom} ${user.nom}`.trim();
+      this.userName = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
       this.userInitial = `${user.prenom?.charAt(0) || ''}${user.nom?.charAt(0) || ''}`.toUpperCase() || 'U';
     }
 
     const labels: Record<string, string> = {
-      medecin: 'Medecin',
+      medecin: 'Médecin',
       patient: 'Patient',
-      admin: 'Admin',
-      infirmier: 'Infirmier',
+      admin: 'Administrateur',
+      infirmier: 'Infirmier(ère)',
       laboratoire: 'Laboratoire'
     };
     this.userRole = labels[role] || 'Utilisateur';
   }
 
-  openSearch() { this.searchOpen = true; }
-  closeSearch() { if (!this.searchQuery) this.searchOpen = false; }
-  toggleMenu() { this.sidebarService.emit(); }
-  clearNotifs() { this.notifications = []; this.hasNotif = false; this.showNotif = false; }
-
-  clearSearch() {
-    this.searchQuery = '';
-    this.searchOpen = false;
-  }
-
-  performSearch() {
-    if (!this.searchQuery.trim()) return;
-    // Navigate to the appropriate search route based on role
-    const role = this.authService.getRole();
-    if (role === 'medecin') {
-      this.router.navigate(['/medecin/search-dme'], { queryParams: { q: this.searchQuery.trim() } });
-    } else if (role === 'admin') {
-      this.router.navigate(['/admin/users'], { queryParams: { q: this.searchQuery.trim() } });
+  toggleCalendar(event: Event) {
+    event.stopPropagation();
+    this.showCalendar = !this.showCalendar;
+    if (this.showCalendar) {
+      this.selectedMonth = new Date();
+      this.generateCalendar();
     }
-    this.searchOpen = false;
   }
+
+  generateCalendar() {
+    const year = this.selectedMonth.getFullYear();
+    const month = this.selectedMonth.getMonth();
+    this.monthYear = this.selectedMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const prevLastDay = new Date(year, month, 0);
+    
+    const firstDayWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    const lastDate = lastDay.getDate();
+    const prevLastDate = prevLastDay.getDate();
+    
+    this.calendarDays = [];
+    const today = new Date();
+    
+    // Previous month days
+    for (let i = firstDayWeek; i > 0; i--) {
+      const date = new Date(year, month - 1, prevLastDate - i + 1);
+      this.calendarDays.push({ 
+        date, 
+        isCurrentMonth: false, 
+        isToday: false,
+        dayNumber: prevLastDate - i + 1
+      });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= lastDate; i++) {
+      const date = new Date(year, month, i);
+      const isToday = date.toDateString() === today.toDateString();
+      this.calendarDays.push({ 
+        date, 
+        isCurrentMonth: true, 
+        isToday,
+        dayNumber: i
+      });
+    }
+    
+    // Next month days
+    const remainingDays = 42 - this.calendarDays.length;
+    for (let i = 1; i <= remainingDays; i++) {
+      const date = new Date(year, month + 1, i);
+      this.calendarDays.push({ 
+        date, 
+        isCurrentMonth: false, 
+        isToday: false,
+        dayNumber: i
+      });
+    }
+  }
+
+  previousMonth() {
+    this.selectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1);
+    this.generateCalendar();
+  }
+
+  nextMonth() {
+    this.selectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1);
+    this.generateCalendar();
+  }
+
+  toggleMenu() { this.sidebarService.emit(); }
 
   toggleTheme() {
     this.themeService.toggleTheme();

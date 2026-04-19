@@ -27,10 +27,10 @@ export class DmeComponent implements OnInit {
   }
 
   loadDme(): void {
+
   const user = localStorage.getItem('user');
   const parsedUser = user ? JSON.parse(user) : null;
-
-  const userId = parsedUser?.id || parsedUser?._id;
+  const userId = parsedUser?._id;
 
   if (!userId) {
     this.error = 'Utilisateur non connecté.';

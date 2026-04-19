@@ -29,19 +29,26 @@ export class DmeComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-  const user = localStorage.getItem('user');
-  const parsedUser = user ? JSON.parse(user) : null;
-
-  const patientId = parsedUser?._id;
-
-  console.log("PATIENT ID:", patientId);
-
-  if (patientId) {
-    this.loadDme(patientId);
-  } else {
-    this.error = 'Utilisateur non connecté';
-    this.loading = false;
-  }
+    // Récupère l'ID du patient depuis les query params ou params
+    this.route.queryParams.subscribe(params => {
+      const patientId = params['patientId'];
+      if (patientId) {
+        this.patientId = patientId;
+        this.loadDme(patientId);
+      } else {
+        // Fallback: tente de récupérer depuis params (si jamais c'est en params)
+        this.route.params.subscribe(routeParams => {
+          const routePatientId = routeParams['patientId'];
+          if (routePatientId) {
+            this.patientId = routePatientId;
+            this.loadDme(routePatientId);
+          } else {
+            this.error = 'Aucun patient sélectionné';
+            this.loading = false;
+          }
+        });
+      }
+    });
 }
 
   loadDme(patientId: string): void {

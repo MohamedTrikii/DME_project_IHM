@@ -30,7 +30,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'folder_shared',     label: 'Mon DME',        route: '/patient/dme' },
     ]},
     { label: 'Compte', items: [
-      { icon: 'forum',             label: 'Messages',       route: '/patient/messages' },
+      { icon: 'forum',             label: 'Messagerie',     route: '/patient/messages' },
       { icon: 'admin_panel_settings', label: 'Acces',       route: '/patient/access-management' },
       { icon: 'manage_accounts',   label: 'Profil',         route: '/patient/profile' },
     ]}
@@ -41,14 +41,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'dashboard',         label: 'Dashboard',      route: '/medecin/dashboard' },
       { icon: 'groups',            label: 'Patients',       route: '/medecin/patients' },
       { icon: 'search',            label: 'Recherche DME',  route: '/medecin/search-dme' },
-      { icon: 'folder_open',       label: 'DME',            route: '/medecin/dme' },
+      // { icon: 'folder_open',    label: 'DME',            route: '/medecin/dme' }, // supprimé
     ]},
     { label: 'Actions', items: [
       { icon: 'add_circle',        label: 'Consultation',   route: '/medecin/add-consultation' },
-      { icon: 'forum', label: 'Messages', route: '/medecin/messages' },
       { icon: 'receipt_long',      label: 'Ordonnance',     route: '/medecin/create-ordonnance' },
       { icon: 'biotech',           label: 'Analyse',        route: '/medecin/create-analyse-request' },
       { icon: 'person_add',        label: 'Creer patient',  route: '/medecin/create-patient' },
+      { icon: 'forum',             label: 'Messagerie',     route: '/medecin/messages' },
     ]}
   ];
 
@@ -57,6 +57,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'dashboard',         label: 'Dashboard',      route: '/admin/dashboard' },
       { icon: 'manage_accounts',   label: 'Utilisateurs',   route: '/admin/users' },
       { icon: 'person_add',        label: 'Ajouter user',   route: '/admin/add-user' },
+      { icon: 'forum',             label: 'Messagerie',     route: '/admin/messages' },
     ]},
     { label: 'Systeme', items: [
       { icon: 'list_alt',          label: 'Journaux',       route: '/admin/logs' },
@@ -71,6 +72,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'folder_open',       label: 'Dossier',        route: '/infirmier/dossier' },
       { icon: 'history',           label: 'Historique',      route: '/infirmier/historique' },
       { icon: 'assignment',        label: 'Observations',   route: '/infirmier/observations' },
+      { icon: 'forum',             label: 'Messagerie',     route: '/infirmier/messages' },
     ]}
   ];
 
@@ -80,6 +82,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'science',           label: 'Demandes',       route: '/laboratoire/demandes' },
       { icon: 'event',             label: 'Rendez-vous',    route: '/laboratoire/rendezvous' },
       { icon: 'upload_file',       label: 'Resultats',      route: '/laboratoire/upload-result' },
+      { icon: 'forum',             label: 'Messagerie',     route: '/laboratoire/messages' },
     ]}
   ];
 

@@ -12,6 +12,9 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 
+// HTTP Client
+import { HttpClientModule } from '@angular/common/http';
+
 // Shared Module
 import { SharedModule } from '../shared/shared.module';
 
@@ -27,6 +30,7 @@ import { CreateOrdonnanceComponent } from './create-ordonnance/create-ordonnance
 import { CreateAnalyseRequestComponent } from './create-analyse-request/create-analyse-request.component';
 import { SearchDmeComponent } from './search-dme/search-dme.component';
 import { AddDiagnosticComponent } from './add-diagnostic/add-diagnostic.component';
+import { MedecinMessagesComponent } from './messages/messages.component';
 
 @NgModule({
   declarations: [
@@ -40,13 +44,15 @@ import { AddDiagnosticComponent } from './add-diagnostic/add-diagnostic.componen
     CreateOrdonnanceComponent,
     CreateAnalyseRequestComponent,
     SearchDmeComponent,
-    AddDiagnosticComponent
+    AddDiagnosticComponent,
+    MedecinMessagesComponent
   ],
   imports: [
     CommonModule,
     FormsModule,
     RouterModule,
     SharedModule,
+    HttpClientModule,
     MatCardModule,
     MatButtonModule,
     MatFormFieldModule,

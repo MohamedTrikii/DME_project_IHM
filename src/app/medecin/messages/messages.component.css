@@ -6,24 +6,35 @@
 /* LEFT */
 .chat-sidebar {
   width: 250px;
-  border-right: 1px solid #ddd;
+  border-right: 1px solid var(--border);
   padding: 10px;
-  background: #f8fafc;
+  background: var(--bg-base);
 }
 
 .patient {
   padding: 10px;
   cursor: pointer;
   border-radius: 8px;
+  transition: all 0.3s ease;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
 }
 
 .patient:hover {
-  background: #e2e8f0;
+  background: var(--bg-hover);
+  transform: translateX(2px);
 }
 
 .patient.active {
-  background: #1976d2;
-  color: white;
+  background: linear-gradient(135deg, #0369a1, #0e7490);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(3, 105, 161, .25);
 }
 
 /* RIGHT */
@@ -34,18 +45,24 @@
 }
 
 .chat-header {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-  font-weight: bold;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .chat-container {
   flex: 1;
-  padding: 15px;
+  padding: 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  background: linear-gradient(180deg, var(--bg-base), var(--bg-surface));
 }
 
 /* messages */
@@ -67,17 +84,51 @@
 }
 
 .msg.me .bubble {
-  background: #1976d2;
-  color: white;
+  background: linear-gradient(135deg, #0369a1, #0e7490);
+  color: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(3, 105, 161, .2);
 }
 
 .msg.other .bubble {
-  background: #e2e8f0;
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
 }
 
 /* input */
 .input-box {
   display: flex;
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.input-box input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  transition: all 0.3s ease;
+}
+
+.input-box input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+.input-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.input-box button {
+  padding: 12px 24px;
+  min-width: 120px;
 }

@@ -12,32 +12,42 @@
       Fil de discussion
     </div>
 
-    <!-- CHAT -->
-    <div class="chat-container">
 
-      <div *ngFor="let msg of messages" 
-           class="msg" 
-           [ngClass]="msg.from === 'Moi' ? 'me' : 'other'">
+    <!-- Sélecteur de destinataire (médecin) -->
+    <div class="contacts-bar" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color);">
+      <label for="contact-select">Choisir un médecin :</label>
+      <select id="contact-select" [(ngModel)]="selectedContact" (ngModelChange)="selectContact($event)" [disabled]="loading || !contacts.length">
+        <option [ngValue]="null">-- Sélectionner --</option>
+        <option *ngFor="let c of contacts" [ngValue]="c">
+          {{ c.nom }} {{ c.prenom }}
+        </option>
+      </select>
+    </div>
 
-        <div class="bubble">
-          <div class="sender">{{ msg.from }}</div>
-          <div class="text">{{ msg.text }}</div>
+    <div *ngIf="selectedContact">
+      <div class="chat-container">
+        <div *ngFor="let msg of messages" 
+             class="msg" 
+             [ngClass]="msg.from === 'Moi' ? 'me' : 'other'">
+          <div class="bubble">
+            <div class="sender">{{ msg.from }}</div>
+            <div class="text">{{ msg.text }}</div>
+          </div>
         </div>
-
       </div>
 
+      <div class="input-box">
+        <input [(ngModel)]="newMsg" placeholder="Écrire un message..." />
+        <button class="btn btn-primary" (click)="send()" [disabled]="!newMsg.trim()">
+          Envoyer
+        </button>
+      </div>
     </div>
-
-    <!-- INPUT -->
-    <div class="input-box">
-      <input [(ngModel)]="newMsg" placeholder="Écrire un message..." />
-      
-      <button class="btn btn-primary" 
-              (click)="send()" 
-              [disabled]="!newMsg.trim()">
-        Envoyer
-      </button>
+    <div *ngIf="!selectedContact && contacts.length" class="no-contact-msg" style="padding: 16px;">
+      <p>Sélectionnez un médecin pour commencer une discussion.</p>
     </div>
+    <div *ngIf="loading" class="loading-msg" style="padding: 16px;">Chargement...</div>
+    <div *ngIf="error" class="error-msg" style="padding: 16px; color: red;">{{ error }}</div>
 
   </div>
 </div>

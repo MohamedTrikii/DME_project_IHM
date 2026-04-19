@@ -1,4 +1,4 @@
-<header class="header glass" role="banner">
+<section class="header glass">
   <!-- Left: breadcrumb / page title -->
   <div class="header-left">
     <button class="menu-btn" (click)="toggleMenu()" title="Toggle sidebar" aria-label="Ouvrir/fermer le menu">
@@ -10,61 +10,67 @@
     </div>
   </div>
 
-  <!-- Right: search · notifications · user -->
+  <!-- Right: theme · clock · user -->
   <div class="header-right">
 
-    <!-- Search -->
-    <div class="h-search" [class.open]="searchOpen" role="search">
-      <span class="material-icons-round" aria-hidden="true">search</span>
-      <input #searchInput type="text" placeholder="Rechercher..." [(ngModel)]="searchQuery"
-        (blur)="closeSearch()" (keyup.enter)="performSearch()" (keyup.escape)="clearSearch()"
-        aria-label="Recherche globale" />
-      <button class="search-trigger" (click)="openSearch()" *ngIf="!searchOpen" aria-label="Ouvrir la recherche">
-        <span class="material-icons-round" aria-hidden="true">search</span>
-      </button>
-      <button class="search-clear" (click)="clearSearch()" *ngIf="searchOpen && searchQuery" aria-label="Effacer la recherche">
-        <span class="material-icons-round" aria-hidden="true">close</span>
-      </button>
-    </div>
-
-    <!-- Notifications -->
-    <div class="notif-wrapper">
-      <button class="icon-btn notif-btn" (click)="showNotif = !showNotif" type="button"
-        [attr.aria-expanded]="showNotif" aria-label="Notifications">
-        <span class="material-icons-round" aria-hidden="true">notifications_outlined</span>
-        <span class="notif-dot" *ngIf="hasNotif" aria-hidden="true"></span>
-        <span class="sr-only" *ngIf="hasNotif">{{ notifications.length }} nouvelles notifications</span>
-      </button>
-      <div class="notif-dropdown" *ngIf="showNotif" (keydown.escape)="showNotif = false" aria-label="Liste des notifications">
-        <div class="nd-header">
-          <span>Notifications</span>
-          <button class="btn btn-sm btn-outline" (click)="clearNotifs()">Tout lire</button>
-        </div>
-        <div class="nd-item" *ngFor="let n of notifications" role="menuitem">
-          <span class="material-icons-round nd-icon" aria-hidden="true">{{ n.icon }}</span>
-          <div>
-            <p class="nd-msg">{{ n.message }}</p>
-            <small>{{ n.time }}</small>
-          </div>
-        </div>
-        <div class="nd-empty" *ngIf="notifications.length === 0">
-          <span class="material-icons-round" aria-hidden="true">check_circle</span>
-          Aucune notification
-        </div>
-      </div>
-    </div>
-
     <!-- Theme Toggle -->
-    <button class="icon-btn theme-toggle" (click)="toggleTheme()"
-      [title]="'Mode ' + (currentTheme === 'dark' ? 'Clair' : 'Sombre')"
+    <button class="icon-btn theme-toggle" 
+      (click)="toggleTheme()"
+      type="button"
+      [title]="'Passer en mode ' + (currentTheme === 'dark' ? 'clair' : 'sombre')"
       [attr.aria-label]="'Passer en mode ' + (currentTheme === 'dark' ? 'clair' : 'sombre')">
-      <span class="material-icons-round" aria-hidden="true">{{ currentTheme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+      <span class="material-icons-round theme-icon" aria-hidden="true">{{ currentTheme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
     </button>
 
-    <!-- Clock -->
-    <div class="h-clock" aria-label="Heure actuelle" role="timer">
-      <span class="material-icons-round" aria-hidden="true">schedule</span>
-      <span>{{ currentTime }}</span>
+    <!-- Clock & Calendar -->
+    <div class="clock-wrapper">
+      <button class="h-clock" 
+        (click)="toggleCalendar($event)" 
+        [class.active]="showCalendar"
+        type="button"
+        aria-label="Date et heure actuelles - Cliquer pour ouvrir le calendrier">
+        <span class="material-icons-round" aria-hidden="true">schedule</span>
+        <div class="h-clock-info">
+          <span class="h-clock-date">{{ currentDate }}</span>
+          <span class="h-clock-time">{{ currentTime }}</span>
+        </div>
+      </button>
+      
+      <!-- Calendar Dropdown -->
+      <section class="calendar-dropdown" 
+        *ngIf="showCalendar" 
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="showCalendar = false"
+        aria-label="Calendrier">
+        <div class="calendar-header">
+          <button class="cal-nav-btn" (click)="previousMonth()" aria-label="Mois précédent">
+            <span class="material-icons-round">chevron_left</span>
+          </button>
+          <span class="cal-month-year">{{ monthYear }}</span>
+          <button class="cal-nav-btn" (click)="nextMonth()" aria-label="Mois suivant">
+            <span class="material-icons-round">chevron_right</span>
+          </button>
+        </div>
+        
+        <div class="calendar-weekdays">
+          <span>L</span>
+          <span>M</span>
+          <span>M</span>
+          <span>J</span>
+          <span>V</span>
+          <span>S</span>
+          <span>D</span>
+        </div>
+        
+        <div class="calendar-days">
+          <div *ngFor="let day of calendarDays" 
+            class="cal-day" 
+            [class.other-month]="!day.isCurrentMonth"
+            [class.today]="day.isToday">
+            {{ day.dayNumber }}
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- User -->
@@ -77,4 +83,4 @@
     </div>
 
   </div>
-</header>
+</section>
