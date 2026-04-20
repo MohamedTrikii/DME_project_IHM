@@ -18,7 +18,7 @@ export class LoginComponent {
   private redirectUrl: string | null = null;
 
   roles = [
-    { key: 'medecin', label: 'Médecin', icon: 'stethoscope' },
+    { key: 'medecin', label: 'Médecin', icon: 'medical_services' },
     { key: 'patient', label: 'Patient', icon: 'person' },
     { key: 'infirmier', label: 'Infirmier', icon: 'monitor_heart' },
     { key: 'laboratoire', label: 'Laboratoire', icon: 'science' },
