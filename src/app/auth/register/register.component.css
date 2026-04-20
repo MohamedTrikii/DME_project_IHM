@@ -1,3 +1,42 @@
+@media (max-width: 768px) {
+  .register-page {
+    grid-template-columns: 1fr;
+  }
+  .register-left, .register-right {
+    padding: 24px 8px;
+    min-width: 0;
+    max-width: 100vw;
+  }
+  .register-form-wrap {
+    max-width: 100vw;
+    padding: 0;
+  }
+  .role-selector {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .register-page {
+    grid-template-columns: 1fr;
+  }
+  .register-left, .register-right {
+    padding: 12px 2px;
+    min-width: 0;
+    max-width: 100vw;
+  }
+  .register-form-wrap {
+    max-width: 100vw;
+    padding: 0;
+  }
+  .role-selector {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .role-option {
+    font-size: 0.85rem;
+    padding: 8px 2px;
+  }
+}
 /* ══════════════════════════════════════
    REGISTER PAGE — Split-screen Design
 ══════════════════════════════════════ */

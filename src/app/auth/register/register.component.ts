@@ -25,7 +25,7 @@ export class RegisterComponent {
 
   readonly roleOptions = [
     { key: 'patient' as UserRole, label: 'Patient', icon: 'person' },
-    { key: 'medecin' as UserRole, label: 'Médecin', icon: 'stethoscope' },
+    { key: 'medecin' as UserRole, label: 'Médecin', icon: 'medical_services' },
     { key: 'infirmier' as UserRole, label: 'Infirmier', icon: 'monitor_heart' },
     { key: 'laboratoire' as UserRole, label: 'Labo', icon: 'science' },
   ];

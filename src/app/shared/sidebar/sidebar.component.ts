@@ -71,8 +71,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'dashboard',         label: 'Dashboard',      route: '/infirmier/dashboard' },
       { icon: 'folder_open',       label: 'Dossier',        route: '/infirmier/dossier' },
       { icon: 'history',           label: 'Historique',      route: '/infirmier/historique' },
-      { icon: 'assignment',        label: 'Observations',   route: '/infirmier/observations' },
-      { icon: 'forum',             label: 'Messagerie',     route: '/infirmier/messages' },
+      { icon: 'assignment',        label: 'Observations',   route: '/infirmier/observations' }
     ]}
   ];
 
@@ -81,8 +80,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { icon: 'dashboard',         label: 'Dashboard',      route: '/laboratoire/dashboard' },
       { icon: 'science',           label: 'Demandes',       route: '/laboratoire/demandes' },
       { icon: 'event',             label: 'Rendez-vous',    route: '/laboratoire/rendezvous' },
-      { icon: 'upload_file',       label: 'Resultats',      route: '/laboratoire/upload-result' },
-      { icon: 'forum',             label: 'Messagerie',     route: '/laboratoire/messages' },
+      { icon: 'upload_file',       label: 'Resultats',      route: '/laboratoire/upload-result' }
     ]}
   ];
 

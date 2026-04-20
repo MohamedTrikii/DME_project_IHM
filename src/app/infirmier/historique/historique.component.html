@@ -1,6 +1,6 @@
 <h2>Historique des soins</h2>
 
-<button mat-raised-button color="primary" (click)="loadHistorique()" style="margin-bottom: 12px;">Actualiser</button>
+<button class="btn btn-primary" (click)="loadHistorique()" style="margin-bottom: 12px;">Actualiser</button>
 
 <p *ngIf="loading">Chargement...</p>
 <p *ngIf="error" class="error">{{ error }}</p>
