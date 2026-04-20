@@ -24,7 +24,18 @@ export class MedecinMessagesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // Pour test UI : injecter des contacts factices si la liste est vide après 1s
     this.loadContacts();
+    setTimeout(() => {
+      if (!this.contacts || this.contacts.length === 0) {
+        this.contacts = [
+          { _id: '1', nom: 'Patient', prenom: 'Test', email: 'patient1@test.com', role: 'patient' },
+          { _id: '2', nom: 'Patient', prenom: 'Demo', email: 'patient2@test.com', role: 'patient' }
+        ];
+        this.debugContacts = this.contacts;
+        console.warn('Contacts factices injectés pour test UI');
+      }
+    }, 1000);
     this.intervalId = setInterval(() => {
       if (this.selectedContact) {
         this.loadConversation(this.selectedContact);
@@ -57,11 +68,14 @@ export class MedecinMessagesComponent implements OnInit, OnDestroy {
 
   selectContact(contactId: string): void {
     this.selectedContact = contactId;
-    const contact = this.contacts.find(c => c._id === contactId) || null;
-    if (contact) {
-      this.loadConversation(contact._id);
-    } else {
-      this.messages = [];
+    // Ne charge plus la conversation automatiquement
+    // L'utilisateur doit cliquer sur le bouton
+    this.messages = [];
+  }
+
+  onSelectContact(): void {
+    if (this.selectedContact) {
+      this.loadConversation(this.selectedContact);
     }
   }
 

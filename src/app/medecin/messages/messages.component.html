@@ -1,25 +1,21 @@
 <div class="chat-page">
-
-
-  <div class="card messages-card">
+  <div class="messages-card card">
     <div class="messages-header">
-      <span class="material-icons-round">chat_bubble</span>
-      Fil de discussion
+      <span class="material-icons-round">forum</span>
+      <span>Messagerie sécurisée</span>
     </div>
-
-    <!-- Sélecteur de destinataire -->
     <div class="contacts-bar">
-      <label for="contact-select">Choisir un destinataire :</label>
-      <select id="contact-select" [(ngModel)]="selectedContact" (ngModelChange)="selectContact($event)" [disabled]="loading || !contacts.length">
+      <label for="contact-select">Destinataire :</label>
+      <select id="contact-select" [(ngModel)]="selectedContact" [disabled]="loading || !contacts.length">
         <option [value]="''">-- Sélectionner --</option>
-        <option *ngFor="let c of contacts" [value]="c._id">
+        <option *ngFor="let c of contacts" [value]="c._id + ''">
           {{ c.nom }} {{ c.prenom }} ({{ c.role }})
         </option>
       </select>
+      <button class="btn btn-secondary" style="margin-left:8px" (click)="onSelectContact()" [disabled]="!selectedContact">Voir la conversation</button>
     </div>
-
-    <div *ngIf="selectedContact">
-      <div class="messages-container chat-container">
+    <div class="messages-main">
+      <div *ngIf="selectedContact && messages.length" class="chat-container messages-container">
         <div *ngFor="let msg of messages" class="message-wrapper" [class.message-me]="msg.from === 'Moi'">
           <div class="message-bubble" [class.bubble-me]="msg.from === 'Moi'" [class.bubble-other]="msg.from !== 'Moi'">
             <div class="message-sender">{{ msg.from }}</div>
@@ -27,25 +23,17 @@
           </div>
         </div>
       </div>
-
-      <div class="messages-input input-box">
-        <input [(ngModel)]="newMsg" placeholder="Écrire un message..." class="message-input" aria-label="Écrire un message" />
+      <div *ngIf="selectedContact" class="messages-input input-box">
+        <input [(ngModel)]="newMsg" placeholder="Écrire un message..." class="message-input" aria-label="Écrire un message" (keyup.enter)="send()" />
         <button class="btn btn-primary" (click)="send()" [disabled]="!newMsg.trim()" aria-label="Envoyer le message">
           <span class="material-icons-round">send</span>
-          Envoyer
         </button>
       </div>
+      <div *ngIf="!selectedContact && contacts.length" class="no-contact-msg">
+        <p>Sélectionnez un destinataire puis cliquez sur "Voir la conversation".</p>
+      </div>
+      <div *ngIf="loading" class="loading-msg">Chargement...</div>
+      <div *ngIf="error" class="error-msg">{{ error }}</div>
     </div>
-    <div *ngIf="!selectedContact && contacts.length" class="no-contact-msg">
-      <p>Sélectionnez un destinataire pour commencer une discussion.</p>
-    </div>
-    <!-- Debug affichage brut -->
-    <div *ngIf="debugContacts" style="background:#f8f8f8; color:#333; font-size:12px; padding:8px; margin:8px 0; border:1px solid #eee;">
-      <b>Debug contacts API:</b>
-      <pre>{{ debugContacts | json }}</pre>
-    </div>
-    <div *ngIf="loading" class="loading-msg">Chargement...</div>
-    <div *ngIf="error" class="error-msg">{{ error }}</div>
   </div>
-
 </div>

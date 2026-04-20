@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -120,5 +120,12 @@ export class AdminService {
 
   exportData(): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/export`, { responseType: 'blob' });
+  }
+
+  // Recherche utilisateur pour autocomplétion accès DME
+  searchUsers(q: string, role: string = ''): Observable<User[]> {
+    const params: any = { q };
+    if (role) params.role = role;
+    return this.http.get<User[]>(`${this.apiUrl}/search-users`, { params });
   }
 }

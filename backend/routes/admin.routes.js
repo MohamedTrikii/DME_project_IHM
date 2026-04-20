@@ -6,6 +6,9 @@ const adminMiddleware = require('../middleware/admin.middleware');
 
 router.post('/users/create',            authMiddleware, adminMiddleware, adminController.ajouterUtilisateur);
 router.get('/users',              authMiddleware, adminMiddleware, adminController.listerUtilisateurs);
+
+// Recherche utilisateur par nom/prénom/email et rôle (pour autocomplétion accès DME)
+router.get('/search-users', authMiddleware, adminController.searchUsers);
 router.get('/users/:id',          authMiddleware, adminMiddleware, adminController.getUtilisateurById);
 router.put('/users/:id',          authMiddleware, adminMiddleware, adminController.modifierUtilisateur);
 router.delete('/users/:id',      authMiddleware, adminMiddleware, adminController.supprimerUtilisateur);

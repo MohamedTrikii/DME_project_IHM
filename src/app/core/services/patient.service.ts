@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+﻿import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -60,11 +60,15 @@ interface PaginatedResponse<T> {
 
 @Injectable({ providedIn: 'root' })
 export class PatientService {
-
   private readonly api = `${environment.apiUrl}/patient`;
   private readonly medecinApi = `${environment.apiUrl}/medecin`;
 
   constructor(private readonly http: HttpClient) {}
+
+  // Révocation d'accès DME pour un médecin
+  revokeAccess(patientId: string, userId: string): Observable<any> {
+    return this.http.delete(`${environment.apiUrl}/dme/patient/${patientId}/revoke/${userId}`);
+  }
 
   // === Dashboard ===
   getDashboardStats(): Observable<PatientDashboardResponse> {
@@ -114,7 +118,8 @@ export class PatientService {
       params = params.set('search', search);
     }
 
-    return this.http.get<any>(`${this.api}`, { params }).pipe(
+    // Utiliser l'endpoint medecin/patients pour le médecin
+    return this.http.get<any>(`${this.medecinApi}/patients`, { params }).pipe(
       map(response => response.data?.patients ?? response.data ?? response)
     );
   }

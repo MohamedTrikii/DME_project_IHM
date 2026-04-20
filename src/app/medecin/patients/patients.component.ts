@@ -62,6 +62,6 @@ export class PatientsComponent implements OnInit {
   }
 
   openDme(id?: string): void {
-    if (id) this.router.navigate(['/medecin/dme', id]);
+    if (id) this.router.navigate(['/medecin/dme'], { queryParams: { patientId: id } });
   }
 }

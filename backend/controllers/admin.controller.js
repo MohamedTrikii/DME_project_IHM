@@ -1,3 +1,25 @@
+// Recherche utilisateur par nom/prénom/email et rôle (medecin, infirmier, laboratoire)
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q = '', role = '' } = req.query;
+    const query = {
+      statut: 'actif',
+      $or: [
+        { nom: { $regex: q, $options: 'i' } },
+        { prenom: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } }
+      ]
+    };
+    if (role) query.role = role;
+    const users = await Utilisateur.find(query)
+      .select('_id nom prenom email role')
+      .limit(10)
+      .sort({ nom: 1, prenom: 1 });
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 const Utilisateur   = require('../models/utilisateur.model');
 const LogAccess     = require('../models/logAccess.model');
 const bcrypt        = require('bcrypt');
