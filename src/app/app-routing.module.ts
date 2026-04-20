@@ -51,7 +51,7 @@ import { DemandesComponent } from './laboratoire/demandes/demandes.component';
 import { RendezvousComponent } from './laboratoire/rendezvous/rendezvous.component';
 import { UploadResultComponent } from './laboratoire/upload-result/upload-result.component';
 import { LaboratoireDashboardComponent } from './laboratoire/dashboard/dashboard.component';
-
+import { DmeComponent as PatientDmeComponent } from './patient/dme/dme.component';
 const routes: Routes = [
 
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -90,7 +90,7 @@ const routes: Routes = [
       { path: 'consultations', component: ConsultationsComponent },
       { path: 'analyses', component: AnalysesComponent },
       { path: 'messages', component: MessagesComponent },
-      { path: 'dme', component: DmeComponent },
+      { path: 'dme', component: PatientDmeComponent },
       { path: 'ordonnances', component: OrdonnancesComponent },
       { path: 'access-management', component: AccessManagementComponent },
       { path: 'profile', component: ProfileComponent }

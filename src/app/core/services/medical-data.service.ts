@@ -69,8 +69,8 @@ export class MedicalDataService {
   }
 
   getDmeByPatientId(patientId: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/dme/patient/${patientId}`).pipe(map(r => r.data));
-  }
+  return this.http.get<any>(`${this.apiUrl}/patient/${patientId}/dme`).pipe(map(r => r.data));
+}
 
   getInfirmierDmeById(dmeId: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/infirmier/dme/${dmeId}`);

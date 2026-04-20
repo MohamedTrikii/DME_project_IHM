@@ -38,7 +38,11 @@ export class DmeComponent implements OnInit {
       const user = localStorage.getItem('user');
       const parsedUser = user ? JSON.parse(user) : null;
       userId = parsedUser?._id;
+      // userId = parsedUser?.id;  
+      console.log('parsedUser:', parsedUser);  // 👈 ajoute ça
+      console.log('userId:', userId);  
     }
+    // }
 
     if (!userId) {
       this.error = 'Aucun patient sélectionné.';
