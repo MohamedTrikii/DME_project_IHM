@@ -56,13 +56,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Administration', items: [
       { icon: 'dashboard',         label: 'Dashboard',      route: '/admin/dashboard' },
       { icon: 'manage_accounts',   label: 'Utilisateurs',   route: '/admin/users' },
-      { icon: 'person_add',        label: 'Ajouter user',   route: '/admin/add-user' },
-      { icon: 'forum',             label: 'Messagerie',     route: '/admin/messages' },
+      { icon: 'person_add',        label: 'Ajouter user',   route: '/admin/add-user' }
     ]},
     { label: 'Systeme', items: [
       { icon: 'list_alt',          label: 'Journaux',       route: '/admin/logs' },
       { icon: 'security',          label: 'Audit',          route: '/admin/audit-logs' },
-      { icon: 'archive',           label: 'Archivage',      route: '/admin/archive' },
+      { icon: 'archive',           label: 'Archivage',      route: '/admin/archive' }
     ]}
   ];
 

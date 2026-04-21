@@ -1,3 +1,38 @@
+/* Responsive recent users table in dashboard */
+@media (max-width: 900px) {
+    .card .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        min-width: 0;
+        margin-bottom: 8px;
+    }
+    .card .dme-table {
+        min-width: 520px;
+        width: max-content;
+        font-size: 0.92rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .grid-2 {
+        display: block !important;
+    }
+    .card {
+        margin-bottom: 18px;
+        padding: 12px 6px;
+    }
+    .card .dme-table th,
+    .card .dme-table td {
+        padding: 7px 6px;
+        font-size: 0.78rem;
+    }
+    .mini-avatar {
+        width: 22px;
+        height: 22px;
+        font-size: 0.7rem;
+    }
+}
 .quick-action {
     display: flex;
     flex-direction: column;
