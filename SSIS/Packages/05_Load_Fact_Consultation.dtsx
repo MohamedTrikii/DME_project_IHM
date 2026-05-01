@@ -1,0 +1,356 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 05_Load_Fact_Consultation.dtsx
+  Description  : Chargement incrémental de Fact_Consultation
+  Stratégie    : Watermark sur DateConsultation
+                 INSERT uniquement les nouvelles consultations
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+  DATA FLOW :
+  ┌─────────────────────────────────────────────────────────┐
+  │  OLE DB Source (stg.Consultation, après watermark)      │
+  │          ↓                                              │
+  │  Lookup PatientKey   (Dim_Patient  EstCourant=1)        │
+  │          ↓                                              │
+  │  Lookup MedecinKey   (Dim_Medecin  EstCourant=1)        │
+  │          ↓                                              │
+  │  Lookup DiagnosticKey (Dim_Diagnostic)                  │
+  │          ↓                                              │
+  │  Lookup HopitalKey   (Dim_Hopital)                      │
+  │          ↓                                              │
+  │  Derived Column :                                       │
+  │    DateKey = YEAR*10000 + MONTH*100 + DAY               │
+  │    EstUrgence = (TypeConsultation == "Urgence")         │
+  │    NombreOrdonnances = 0 (mis à jour après)             │
+  │          ↓                                              │
+  │  Conditional Split : Lookup manquant → flux Erreur      │
+  │          ↓                                              │
+  │  OLE DB Destination (Fact_Consultation, Fast Load)      │
+  └─────────────────────────────────────────────────────────┘
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0006-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="05_Load_Fact_Consultation"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0006-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[StagingDB]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0006-0002-0001-000000000001}" DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[DWH]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0006-0002-0002-000000000001}" DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <!-- Fichier d'erreurs (lignes rejetées = consultations sans dimension) -->
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[ErrorFile]" DTS:CreationName="FLATFILE"
+      DTS:DTSID="{A1B2C3D4-0006-0002-0003-000000000001}" DTS:ObjectName="ErrorFile">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:Format="Delimited"
+          DTS:ColumnNamesInFirstDataRow="True"
+          DTS:ConnectionString="C:\DME_BI\Errors\Fact_Consultation_Errors.csv"
+          DTS:HeaderRowDelimiter="\r\n"
+          DTS:RowDelimiter="\r\n"
+          DTS:TextQualifier="_x003C_none_x003E_"
+          DTS:CodePage="65001" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0006-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0006-0003-0002-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="NbLignesInsert">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0006-0003-0003-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="NbLignesErreur">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <!-- DATA FLOW Fact_Consultation avec lookups chaînés -->
+    <DTS:Executable
+      DTS:refId="Package\DFT_FactConsultation"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0006-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="DFT_FactConsultation — Chargement Fact_Consultation">
+      <DTS:ObjectData>
+        <pipeline version="1">
+          <components>
+
+            <!-- SOURCE stg.Consultation -->
+            <component refId="Package\DFT_FactConsultation\OLE_SRC_stgConsultation"
+              componentClassID="Microsoft.OLEDBSource"
+              name="OLE_SRC_stgConsultation">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">2</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT
+    ConsultationID,
+    PatientID,
+    MedecinID,
+    HopitalID,
+    DiagnosticID,
+    DateConsultation,
+    TypeConsultation,
+    DureeMinutes
+FROM DME_Staging.stg.Consultation
+WHERE DiagnosticID IS NOT NULL
+  AND HopitalID    IS NOT NULL
+                </property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\OLE_SRC_stgConsultation.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+            </component>
+
+            <!-- LOOKUP PatientKey -->
+            <component refId="Package\DFT_FactConsultation\LKP_PatientKey"
+              componentClassID="Microsoft.Lookup"
+              name="LKP_PatientKey"
+              description="Résoudre PatientID → PatientKey (version courante)">
+              <properties>
+                <property name="CacheType" dataType="System.Int32">1</property>
+                <property name="NoMatchBehavior" dataType="System.Int32">0</property>
+                <property name="SqlCommand" dataType="System.String">SELECT PatientKey, PatientID FROM [dbo].[Dim_Patient] WHERE EstCourant = 1</property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\LKP_PatientKey.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+              <outputs>
+                <output refId="Package\DFT_FactConsultation\LKP_PatientKey.Outputs[Lookup Match Output]" name="Lookup Match Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_FactConsultation\LKP_PatientKey.Outputs[Lookup Match Output].Columns[PatientKey]"
+                      cachedDataType="i4" cachedName="PatientKey" name="PatientKey" />
+                  </outputColumns>
+                </output>
+                <output refId="Package\DFT_FactConsultation\LKP_PatientKey.Outputs[Lookup No Match Output]"
+                  name="Lookup No Match Output" isErrorOut="false" />
+              </outputs>
+            </component>
+
+            <!-- LOOKUP MedecinKey -->
+            <component refId="Package\DFT_FactConsultation\LKP_MedecinKey"
+              componentClassID="Microsoft.Lookup"
+              name="LKP_MedecinKey">
+              <properties>
+                <property name="CacheType" dataType="System.Int32">1</property>
+                <property name="NoMatchBehavior" dataType="System.Int32">0</property>
+                <property name="SqlCommand" dataType="System.String">SELECT MedecinKey, MedecinID FROM [dbo].[Dim_Medecin] WHERE EstCourant = 1</property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\LKP_MedecinKey.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+              <outputs>
+                <output refId="Package\DFT_FactConsultation\LKP_MedecinKey.Outputs[Lookup Match Output]" name="Lookup Match Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_FactConsultation\LKP_MedecinKey.Outputs[Lookup Match Output].Columns[MedecinKey]"
+                      cachedDataType="i4" cachedName="MedecinKey" name="MedecinKey" />
+                  </outputColumns>
+                </output>
+                <output refId="Package\DFT_FactConsultation\LKP_MedecinKey.Outputs[Lookup No Match Output]"
+                  name="Lookup No Match Output" isErrorOut="false" />
+              </outputs>
+            </component>
+
+            <!-- LOOKUP DiagnosticKey -->
+            <component refId="Package\DFT_FactConsultation\LKP_DiagnosticKey"
+              componentClassID="Microsoft.Lookup"
+              name="LKP_DiagnosticKey">
+              <properties>
+                <property name="CacheType" dataType="System.Int32">1</property>
+                <property name="NoMatchBehavior" dataType="System.Int32">0</property>
+                <property name="SqlCommand" dataType="System.String">SELECT DiagnosticKey, DiagnosticID FROM [dbo].[Dim_Diagnostic]</property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\LKP_DiagnosticKey.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+              <outputs>
+                <output refId="Package\DFT_FactConsultation\LKP_DiagnosticKey.Outputs[Lookup Match Output]" name="Lookup Match Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_FactConsultation\LKP_DiagnosticKey.Outputs[Lookup Match Output].Columns[DiagnosticKey]"
+                      cachedDataType="i4" cachedName="DiagnosticKey" name="DiagnosticKey" />
+                  </outputColumns>
+                </output>
+                <output refId="Package\DFT_FactConsultation\LKP_DiagnosticKey.Outputs[Lookup No Match Output]"
+                  name="Lookup No Match Output" isErrorOut="false" />
+              </outputs>
+            </component>
+
+            <!-- LOOKUP HopitalKey -->
+            <component refId="Package\DFT_FactConsultation\LKP_HopitalKey"
+              componentClassID="Microsoft.Lookup"
+              name="LKP_HopitalKey">
+              <properties>
+                <property name="CacheType" dataType="System.Int32">1</property>
+                <property name="NoMatchBehavior" dataType="System.Int32">0</property>
+                <property name="SqlCommand" dataType="System.String">SELECT HopitalKey, HopitalID FROM [dbo].[Dim_Hopital]</property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\LKP_HopitalKey.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+              <outputs>
+                <output refId="Package\DFT_FactConsultation\LKP_HopitalKey.Outputs[Lookup Match Output]" name="Lookup Match Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_FactConsultation\LKP_HopitalKey.Outputs[Lookup Match Output].Columns[HopitalKey]"
+                      cachedDataType="i4" cachedName="HopitalKey" name="HopitalKey" />
+                  </outputColumns>
+                </output>
+                <output refId="Package\DFT_FactConsultation\LKP_HopitalKey.Outputs[Lookup No Match Output]"
+                  name="Lookup No Match Output" isErrorOut="false" />
+              </outputs>
+            </component>
+
+            <!-- DERIVED COLUMN : DateKey, EstUrgence -->
+            <component refId="Package\DFT_FactConsultation\DRV_FactCols"
+              componentClassID="Microsoft.DerivedColumn"
+              name="DRV_FactCols"
+              description="Calculer DateKey YYYYMMDD et EstUrgence">
+              <outputs>
+                <output refId="Package\DFT_FactConsultation\DRV_FactCols.Outputs[Derived Column Output]"
+                  name="Derived Column Output">
+                  <outputColumns>
+                    <!-- DateKey = YYYYMMDD -->
+                    <outputColumn refId="Package\DFT_FactConsultation\DRV_FactCols.Outputs[Derived Column Output].Columns[DateKey]"
+                      dataType="i4" name="DateKey">
+                      <properties>
+                        <property name="Expression" dataType="System.String">YEAR(DateConsultation) * 10000 + MONTH(DateConsultation) * 100 + DAY(DateConsultation)</property>
+                      </properties>
+                    </outputColumn>
+                    <!-- EstUrgence = 1 si TypeConsultation = "Urgence" -->
+                    <outputColumn refId="Package\DFT_FactConsultation\DRV_FactCols.Outputs[Derived Column Output].Columns[EstUrgence]"
+                      dataType="bool" name="EstUrgence">
+                      <properties>
+                        <property name="Expression" dataType="System.String">TypeConsultation == "Urgence"</property>
+                      </properties>
+                    </outputColumn>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+
+            <!-- DESTINATION Fact_Consultation -->
+            <component refId="Package\DFT_FactConsultation\OLE_DST_FactConsultation"
+              componentClassID="Microsoft.OLEDBDestination"
+              name="OLE_DST_FactConsultation">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">3</property>
+                <property name="OpenRowset" dataType="System.String">[dbo].[Fact_Consultation]</property>
+                <property name="FastLoadMaxInsertCommitSize" dataType="System.Int32">10000</property>
+                <property name="FastLoadOptions" dataType="System.String">TABLOCK</property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\OLE_DST_FactConsultation.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+            </component>
+
+            <!-- DESTINATION fichier d'erreurs (lignes sans dimension) -->
+            <component refId="Package\DFT_FactConsultation\FF_DST_Errors"
+              componentClassID="Microsoft.FlatFileDestination"
+              name="FF_DST_Errors"
+              description="Écrire les lignes rejetées dans le fichier d'erreurs CSV">
+              <connections>
+                <connection refId="Package\DFT_FactConsultation\FF_DST_Errors.Connections[FlatFileConnection]"
+                  connectionManagerID="Package.ConnectionManagers[ErrorFile]"
+                  connectionManagerRefId="Package.ConnectionManagers[ErrorFile]" name="FlatFileConnection" />
+              </connections>
+            </component>
+
+          </components>
+
+          <paths>
+            <path refId="Package\DFT_FactConsultation.Paths[SRC_LKP_Patient]" name="SRC_LKP_Patient"
+              endId="Package\DFT_FactConsultation\LKP_PatientKey.Inputs[Lookup Input]"
+              startId="Package\DFT_FactConsultation\OLE_SRC_stgConsultation.Outputs[OLE DB Source Output]" />
+            <path refId="Package\DFT_FactConsultation.Paths[LKP_Patient_LKP_Medecin]" name="LKP_Patient_LKP_Medecin"
+              endId="Package\DFT_FactConsultation\LKP_MedecinKey.Inputs[Lookup Input]"
+              startId="Package\DFT_FactConsultation\LKP_PatientKey.Outputs[Lookup Match Output]" />
+            <path refId="Package\DFT_FactConsultation.Paths[LKP_Medecin_LKP_Diagno]" name="LKP_Medecin_LKP_Diagno"
+              endId="Package\DFT_FactConsultation\LKP_DiagnosticKey.Inputs[Lookup Input]"
+              startId="Package\DFT_FactConsultation\LKP_MedecinKey.Outputs[Lookup Match Output]" />
+            <path refId="Package\DFT_FactConsultation.Paths[LKP_Diagno_LKP_Hopital]" name="LKP_Diagno_LKP_Hopital"
+              endId="Package\DFT_FactConsultation\LKP_HopitalKey.Inputs[Lookup Input]"
+              startId="Package\DFT_FactConsultation\LKP_DiagnosticKey.Outputs[Lookup Match Output]" />
+            <path refId="Package\DFT_FactConsultation.Paths[LKP_Hopital_DRV]" name="LKP_Hopital_DRV"
+              endId="Package\DFT_FactConsultation\DRV_FactCols.Inputs[Derived Column Input]"
+              startId="Package\DFT_FactConsultation\LKP_HopitalKey.Outputs[Lookup Match Output]" />
+            <path refId="Package\DFT_FactConsultation.Paths[DRV_DST]" name="DRV_DST"
+              endId="Package\DFT_FactConsultation\OLE_DST_FactConsultation.Inputs[OLE DB Destination Input]"
+              startId="Package\DFT_FactConsultation\DRV_FactCols.Outputs[Derived Column Output]" />
+            <!-- Lignes sans correspondance → fichier erreurs -->
+            <path refId="Package\DFT_FactConsultation.Paths[NoMatch_Errors]" name="NoMatch_Errors"
+              endId="Package\DFT_FactConsultation\FF_DST_Errors.Inputs[Flat File Destination Input]"
+              startId="Package\DFT_FactConsultation\LKP_PatientKey.Outputs[Lookup No Match Output]" />
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Mettre à jour les compteurs de lignes dans les logs -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_LogRowCount"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0006-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_LogRowCount — Enregistrer compteurs">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="EXEC [log].usp_LogRowCount @RunID = ?, @NomTable = N'Fact_Consultation', @Phase = N'FAIT', @TypeOperation = N'INSERT', @NombreLignes = ?;">
+          <SQLTask:ParameterBindings>
+            <SQLTask:ParameterBinding SQLTask:DtsVariableName="User::RunID"
+              SQLTask:ParameterDirection="Input" SQLTask:DataType="3" SQLTask:ParameterName="0" SQLTask:ParameterSize="-1" />
+            <SQLTask:ParameterBinding SQLTask:DtsVariableName="User::NbLignesInsert"
+              SQLTask:ParameterDirection="Input" SQLTask:DataType="3" SQLTask:ParameterName="1" SQLTask:ParameterSize="-1" />
+          </SQLTask:ParameterBindings>
+        </SQLTask:SqlTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_DFT_Log]"
+      DTS:From="Package\DFT_FactConsultation"
+      DTS:To="Package\SCT_LogRowCount"
+      DTS:DTSID="{A1B2C3D4-0006-0006-0001-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_DFT_Log" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>

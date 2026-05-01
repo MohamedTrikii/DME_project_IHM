@@ -1,0 +1,253 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 04_Load_Dimensions.dtsx
+  Description  : Chargement des dimensions de référence (SCD1)
+                 Dim_Gouvernorat, Dim_Specialite, Dim_Diagnostic,
+                 Dim_Medicament, Dim_TypeAnalyse, Dim_Hopital
+                 + Dim_Date via procédure stockée sp_Remplir_Dim_Date
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+  CONTROL FLOW :
+  ┌───────────────────────────────────────────────────────┐
+  │  SCT_LoadDimDate : EXEC sp_Remplir_Dim_Date           │
+  ├───────────────────────────────────────────────────────┤
+  │  SEQ_DimRef : Séquence en parallèle                   │
+  │   DFT_Gouvernorat  → MERGE INTO Dim_Gouvernorat       │
+  │   DFT_Specialite   → MERGE INTO Dim_Specialite        │
+  │   DFT_Diagnostic   → MERGE INTO Dim_Diagnostic        │
+  │   DFT_Medicament   → MERGE INTO Dim_Medicament        │
+  │   DFT_TypeAnalyse  → MERGE INTO Dim_TypeAnalyse       │
+  │   DFT_Hopital      → MERGE INTO Dim_Hopital           │
+  └───────────────────────────────────────────────────────┘
+
+  DATA FLOW (DFT_Gouvernorat) — exemple détaillé :
+  ┌───────────────────────────────────────────────────────┐
+  │  OLE DB Source (stg.Gouvernorat)                      │
+  │         ↓                                             │
+  │  Derived Column : Region = CASE Nom WHEN ...          │
+  │         ↓                                             │
+  │  Lookup (Dim_Gouvernorat par GouvernoratID)           │
+  │   ├── Match    → OLE DB Command (UPDATE SCD1)         │
+  │   └── No Match → OLE DB Destination (INSERT)         │
+  └───────────────────────────────────────────────────────┘
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0005-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="04_Load_Dimensions"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0005-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[StagingDB]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0005-0002-0001-000000000001}" DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[DWH]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0005-0002-0002-000000000001}" DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0005-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0005-0003-0002-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="DimDate_AnneeDebut">
+      <DTS:VariableValue DTS:DataType="3">2020</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0005-0003-0003-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="DimDate_AnneeFin">
+      <DTS:VariableValue DTS:DataType="3">2026</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <!-- Étape 1 : Peupler Dim_Date via procédure stockée -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_LoadDimDate"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0005-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_LoadDimDate — Peupler Dim_Date (2020-2026)">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="EXEC dbo.sp_Remplir_Dim_Date @AnneeDebut = ?, @AnneeFin = ?;">
+          <SQLTask:ParameterBindings>
+            <SQLTask:ParameterBinding SQLTask:DtsVariableName="User::DimDate_AnneeDebut"
+              SQLTask:ParameterDirection="Input" SQLTask:DataType="3" SQLTask:ParameterName="0" SQLTask:ParameterSize="-1" />
+            <SQLTask:ParameterBinding SQLTask:DtsVariableName="User::DimDate_AnneeFin"
+              SQLTask:ParameterDirection="Input" SQLTask:DataType="3" SQLTask:ParameterName="1" SQLTask:ParameterSize="-1" />
+          </SQLTask:ParameterBindings>
+        </SQLTask:SqlTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Séquence dimensions de référence (peuvent tourner en parallèle) -->
+    <DTS:Executable
+      DTS:refId="Package\SEQ_DimRef"
+      DTS:CreationName="STOCK:SEQUENCE"
+      DTS:DTSID="{A1B2C3D4-0005-0005-0002-000000000001}"
+      DTS:ExecutableType="STOCK:SEQUENCE"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="SEQ_DimRef — Chargement dimensions de référence">
+      <DTS:Executables>
+
+        <!-- DATA FLOW Dim_Gouvernorat (SCD Type 1 via MERGE SQL) -->
+        <DTS:Executable
+          DTS:refId="Package\SEQ_DimRef\SCT_MergeGouvernorat"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0005-0005-0002-000000000002}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_MergeGouvernorat — MERGE SCD1 Dim_Gouvernorat">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[DWH]"
+              SQLTask:SqlStatementSource="MERGE INTO dbo.Dim_Gouvernorat AS cible
+USING (
+    SELECT g.GouvernoratID, g.Nom,
+        Region = CASE g.Nom
+            WHEN N'Tunis'    THEN N'Nord'
+            WHEN N'Ariana'   THEN N'Nord'
+            WHEN N'Bizerte'  THEN N'Nord'
+            WHEN N'Nabeul'   THEN N'Côtière'
+            WHEN N'Sousse'   THEN N'Côtière'
+            WHEN N'Monastir' THEN N'Côtière'
+            WHEN N'Sfax'     THEN N'Centre'
+            WHEN N'Kairouan' THEN N'Centre'
+            ELSE N'Centre' END
+    FROM DME_Staging.stg.Gouvernorat g
+) AS source ON cible.GouvernoratID = source.GouvernoratID
+WHEN MATCHED AND (cible.Nom &lt;&gt; source.Nom OR cible.Region &lt;&gt; source.Region)
+    THEN UPDATE SET cible.Nom = source.Nom, cible.Region = source.Region
+WHEN NOT MATCHED BY TARGET
+    THEN INSERT (GouvernoratID, Nom, Region) VALUES (source.GouvernoratID, source.Nom, source.Region);" />
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <!-- MERGE Dim_Specialite -->
+        <DTS:Executable
+          DTS:refId="Package\SEQ_DimRef\SCT_MergeSpecialite"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0005-0005-0002-000000000003}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_MergeSpecialite — MERGE SCD1 Dim_Specialite">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[DWH]"
+              SQLTask:SqlStatementSource="MERGE INTO dbo.Dim_Specialite AS cible
+USING (SELECT SpecialiteID, Nom, Description FROM DME_Staging.stg.Specialite) AS source
+ON cible.SpecialiteID = source.SpecialiteID
+WHEN MATCHED AND (cible.Nom &lt;&gt; source.Nom)
+    THEN UPDATE SET cible.Nom = source.Nom, cible.Description = source.Description
+WHEN NOT MATCHED BY TARGET
+    THEN INSERT (SpecialiteID, Nom, Description) VALUES (source.SpecialiteID, source.Nom, source.Description);" />
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <!-- MERGE Dim_Medicament -->
+        <DTS:Executable
+          DTS:refId="Package\SEQ_DimRef\SCT_MergeMedicament"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0005-0005-0002-000000000004}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_MergeMedicament — MERGE SCD1 Dim_Medicament">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[DWH]"
+              SQLTask:SqlStatementSource="MERGE INTO dbo.Dim_Medicament AS cible
+USING (
+    SELECT MedicamentID, NomCommercial, NomGenerique, Classe, Forme, Dosage
+    FROM DME_Staging.stg.Medicament
+) AS source ON cible.MedicamentID = source.MedicamentID
+WHEN MATCHED AND (cible.NomCommercial &lt;&gt; source.NomCommercial OR ISNULL(cible.Classe,'') &lt;&gt; ISNULL(source.Classe,''))
+    THEN UPDATE SET cible.NomCommercial = source.NomCommercial, cible.NomGenerique = source.NomGenerique,
+                   cible.Classe = source.Classe, cible.Forme = source.Forme, cible.Dosage = source.Dosage
+WHEN NOT MATCHED BY TARGET
+    THEN INSERT (MedicamentID, NomCommercial, NomGenerique, Classe, Forme, Dosage)
+         VALUES (source.MedicamentID, source.NomCommercial, source.NomGenerique, source.Classe, source.Forme, source.Dosage);" />
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <!-- MERGE Dim_TypeAnalyse -->
+        <DTS:Executable
+          DTS:refId="Package\SEQ_DimRef\SCT_MergeTypeAnalyse"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0005-0005-0002-000000000005}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_MergeTypeAnalyse — MERGE SCD1 Dim_TypeAnalyse">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[DWH]"
+              SQLTask:SqlStatementSource="MERGE INTO dbo.Dim_TypeAnalyse AS cible
+USING (SELECT TypeAnalyseID, Nom, Unite FROM DME_Staging.stg.TypeAnalyse) AS source
+ON cible.TypeAnalyseID = source.TypeAnalyseID
+WHEN MATCHED AND (cible.Nom &lt;&gt; source.Nom)
+    THEN UPDATE SET cible.Nom = source.Nom, cible.Unite = source.Unite
+WHEN NOT MATCHED BY TARGET
+    THEN INSERT (TypeAnalyseID, Nom, Unite) VALUES (source.TypeAnalyseID, source.Nom, source.Unite);" />
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <!-- MERGE Dim_Hopital -->
+        <DTS:Executable
+          DTS:refId="Package\SEQ_DimRef\SCT_MergeHopital"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0005-0005-0002-000000000006}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_MergeHopital — MERGE SCD1 Dim_Hopital">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[DWH]"
+              SQLTask:SqlStatementSource="MERGE INTO dbo.Dim_Hopital AS cible
+USING (
+    SELECT h.HopitalID, h.Nom, h.Type, v.Nom AS Ville, g.Nom AS Gouvernorat
+    FROM DME_Staging.stg.Hopital h
+    JOIN DME_SourceDB.dbo.Villes        v ON h.VilleID       = v.VilleID
+    JOIN DME_SourceDB.dbo.Gouvernorats  g ON v.GouvernoratID = g.GouvernoratID
+) AS source ON cible.HopitalID = source.HopitalID
+WHEN MATCHED AND (cible.Nom &lt;&gt; source.Nom OR cible.Type &lt;&gt; source.Type)
+    THEN UPDATE SET cible.Nom = source.Nom, cible.Type = source.Type,
+                   cible.Ville = source.Ville, cible.Gouvernorat = source.Gouvernorat
+WHEN NOT MATCHED BY TARGET
+    THEN INSERT (HopitalID, Nom, Type, Ville, Gouvernorat)
+         VALUES (source.HopitalID, source.Nom, source.Type, source.Ville, source.Gouvernorat);" />
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+      </DTS:Executables>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_DimDate_DimRef]"
+      DTS:From="Package\SCT_LoadDimDate"
+      DTS:To="Package\SEQ_DimRef"
+      DTS:DTSID="{A1B2C3D4-0005-0006-0001-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_DimDate_DimRef" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>

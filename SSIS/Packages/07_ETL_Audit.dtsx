@@ -1,0 +1,264 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 07_ETL_Audit.dtsx
+  Description  : Rapport d'audit post-ETL et validation du DW
+  Rôle         : - Vérifier l'intégrité référentielle du DW
+                 - Générer des statistiques de run
+                 - Détecter les orphelins et incohérences
+                 - Exporter le rapport vers la table [log].ETL_Run
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+  CONTROL FLOW :
+  ┌────────────────────────────────────────────────────────┐
+  │  SCT_AuditRowCounts  : Compter lignes par table DW     │
+  ├────────────────────────────────────────────────────────┤
+  │  SCT_AuditOrphans    : Détecter les clés orphelines    │
+  ├────────────────────────────────────────────────────────┤
+  │  SCT_AuditStats      : Calculer statistiques KPIs      │
+  ├────────────────────────────────────────────────────────┤
+  │  SCT_ValidateDW      : Valider contraintes DW          │
+  └────────────────────────────────────────────────────────┘
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0008-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="07_ETL_Audit"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0008-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[StagingDB]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0008-0002-0001-000000000001}" DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[DWH]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0008-0002-0002-000000000001}" DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0008-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0008-0003-0002-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="NbOrphansTotal">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <!-- Audit 1 : Compter les lignes dans toutes les tables DW -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_AuditRowCounts"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0008-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_AuditRowCounts — Compter lignes tables DW">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="-- Rapport de comptage des lignes du Data Warehouse
+SELECT
+    TableName       = t.name,
+    NombreLignes    = p.rows,
+    TailleKB        = CAST(SUM(a.total_pages) * 8 AS BIGINT)
+FROM sys.tables t
+JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0,1)
+JOIN sys.allocation_units a ON p.partition_id = a.container_id
+WHERE t.name LIKE 'Dim_%' OR t.name LIKE 'Fact_%'
+GROUP BY t.name, p.rows
+ORDER BY CASE WHEN t.name LIKE 'Dim_%' THEN 0 ELSE 1 END, t.name;
+
+PRINT N'=== AUDIT COMPTAGE LIGNES DATA WAREHOUSE ===';
+PRINT CONCAT(N'Run ID audité : ', @@SPID);
+PRINT CONCAT(N'Date audit   : ', CONVERT(NVARCHAR, GETDATE(), 120));" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Audit 2 : Détecter les clés orphelines dans les faits -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_AuditOrphans"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0008-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_AuditOrphans — Vérifier intégrité référentielle">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="-- Vérifier les DateKey orphelins dans Fact_Consultation
+SELECT
+    'Fact_Consultation_DateKey_Orphan' AS TypeAnomalie,
+    COUNT(*) AS NombreLignes
+FROM dbo.Fact_Consultation fc
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Dim_Date dd WHERE dd.DateKey = fc.DateKey)
+
+UNION ALL
+
+-- Vérifier les PatientKey orphelins
+SELECT
+    'Fact_Consultation_PatientKey_Orphan',
+    COUNT(*)
+FROM dbo.Fact_Consultation fc
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Dim_Patient dp WHERE dp.PatientKey = fc.PatientKey)
+
+UNION ALL
+
+-- Vérifier les MedecinKey orphelins
+SELECT
+    'Fact_Consultation_MedecinKey_Orphan',
+    COUNT(*)
+FROM dbo.Fact_Consultation fc
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Dim_Medecin dm WHERE dm.MedecinKey = fc.MedecinKey)
+
+UNION ALL
+
+-- Vérifier les DiagnosticKey orphelins
+SELECT
+    'Fact_Consultation_DiagnosticKey_Orphan',
+    COUNT(*)
+FROM dbo.Fact_Consultation fc
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Dim_Diagnostic dd WHERE dd.DiagnosticKey = fc.DiagnosticKey)
+
+UNION ALL
+
+-- Vérifier les DateKey orphelins dans Fact_Hospitalisation
+SELECT
+    'Fact_Hospitalisation_DateKey_Orphan',
+    COUNT(*)
+FROM dbo.Fact_Hospitalisation fh
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Dim_Date dd WHERE dd.DateKey = fh.DateEntreeKey)
+
+ORDER BY NombreLignes DESC;" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Audit 3 : Statistiques analytiques (KPIs Power BI) -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_AuditStats"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0008-0005-0003-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_AuditStats — KPIs et statistiques DW">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="PRINT N'=== KPIs Data Warehouse DME ===';
+
+-- KPI 1 : Consultations par année
+PRINT N'--- Consultations par année ---';
+SELECT dd.Annee, NombreConsultations = COUNT(*)
+FROM dbo.Fact_Consultation fc
+JOIN dbo.Dim_Date dd ON fc.DateKey = dd.DateKey
+GROUP BY dd.Annee ORDER BY dd.Annee;
+
+-- KPI 2 : Top 5 diagnostics
+PRINT N'--- Top 5 diagnostics ---';
+SELECT TOP 5 diag.Libelle, NombreConsultations = COUNT(*)
+FROM dbo.Fact_Consultation fc
+JOIN dbo.Dim_Diagnostic diag ON fc.DiagnosticKey = diag.DiagnosticKey
+GROUP BY diag.Libelle ORDER BY NombreConsultations DESC;
+
+-- KPI 3 : Taux d'anomalies par type d'analyse
+PRINT N'--- Taux anomalies analyses ---';
+SELECT
+    ta.Nom AS TypeAnalyse,
+    Total       = COUNT(*),
+    Anormaux    = SUM(CAST(fa.EstAnormal AS INT)),
+    TauxAnormal = CAST(SUM(CAST(fa.EstAnormal AS INT))*100.0/NULLIF(COUNT(*),0) AS DECIMAL(5,1))
+FROM dbo.Fact_Analyse fa
+JOIN dbo.Dim_TypeAnalyse ta ON fa.TypeAnalyseKey = ta.TypeAnalyseKey
+GROUP BY ta.Nom ORDER BY TauxAnormal DESC;
+
+-- KPI 4 : Durée et coût moyen hospitalisations par spécialité
+PRINT N'--- Hospitalisations par spécialité ---';
+SELECT
+    dm.Specialite,
+    NbHospi        = COUNT(*),
+    DureeMoyenne   = CAST(AVG(CAST(fh.DureeSejourJours AS FLOAT)) AS DECIMAL(5,1)),
+    CoutMoyen      = CAST(AVG(fh.CoutSejour) AS DECIMAL(10,2))
+FROM dbo.Fact_Hospitalisation fh
+JOIN dbo.Dim_Medecin dm ON fh.MedecinKey = dm.MedecinKey AND dm.EstCourant = 1
+WHERE fh.DureeSejourJours IS NOT NULL
+GROUP BY dm.Specialite ORDER BY DureeMoyenne DESC;
+
+-- KPI 5 : Patients SCD2 (plusieurs versions)
+PRINT N'--- Patients avec historique SCD2 ---';
+SELECT PatientID, COUNT(*) AS NbVersions
+FROM dbo.Dim_Patient
+GROUP BY PatientID HAVING COUNT(*) > 1
+ORDER BY NbVersions DESC;" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Audit 4 : Validation finale et résumé dans les logs -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_FinalSummary"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0008-0005-0004-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_FinalSummary — Résumé final ETL dans logs">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="-- Résumé final : afficher le dernier run ETL
+SELECT * FROM [log].v_DernierRun;
+
+-- Afficher les erreurs du dernier run
+SELECT TOP 20
+    DateErreur,
+    NomPackage,
+    NomTache,
+    TableCible,
+    Severite,
+    MessageErreur
+FROM [log].ETL_ErrorLog
+WHERE RunID = (SELECT MAX(RunID) FROM [log].ETL_Run)
+ORDER BY DateErreur DESC;
+
+-- Compteurs par table
+SELECT NomTable, Phase, TypeOperation, NombreLignes
+FROM [log].ETL_RowCount
+WHERE RunID = (SELECT MAX(RunID) FROM [log].ETL_Run)
+ORDER BY Phase, NomTable;" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_RowCounts_Orphans]"
+      DTS:From="Package\SCT_AuditRowCounts" DTS:To="Package\SCT_AuditOrphans"
+      DTS:DTSID="{A1B2C3D4-0008-0006-0001-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_RowCounts_Orphans" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Orphans_Stats]"
+      DTS:From="Package\SCT_AuditOrphans" DTS:To="Package\SCT_AuditStats"
+      DTS:DTSID="{A1B2C3D4-0008-0006-0002-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_Orphans_Stats" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Stats_Summary]"
+      DTS:From="Package\SCT_AuditStats" DTS:To="Package\SCT_FinalSummary"
+      DTS:DTSID="{A1B2C3D4-0008-0006-0003-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_Stats_Summary" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>

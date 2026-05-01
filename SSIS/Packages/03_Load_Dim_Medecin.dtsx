@@ -1,0 +1,287 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 03_Load_Dim_Medecin.dtsx
+  Description  : Chargement Dim_Medecin avec SCD Type 2
+  Colonnes suivies (historisées) :
+    - Specialite, Hopital, AnneesExperience, NiveauExperience
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+  DATA FLOW : même logique que 02_Load_Dim_Patient.dtsx
+  OLE_SRC (stg.Medecin) → DRV (transformations) →
+  LKP (Dim_Medecin courant) → CSP (SCD2/NoChange) →
+  CMD (expirer) → UAL → DRV2 (SCD cols) → DST (Dim_Medecin)
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0004-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="03_Load_Dim_Medecin"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0004-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[SourceDB]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0004-0002-0001-000000000001}" DTS:ObjectName="SourceDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_SourceDB;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[StagingDB]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0004-0002-0002-000000000001}" DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[DWH]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0004-0002-0003-000000000001}" DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0004-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="16" DTS:DTSID="{A1B2C3D4-0004-0003-0002-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="DateAujourdhui">
+      <DTS:VariableValue DTS:DataType="16">2026-05-01</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <DTS:Executable
+      DTS:refId="Package\SCT_InitDate"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ScriptTask.ScriptTask, Microsoft.SqlServer.ScriptTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0004-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ScriptTask.ScriptTask, Microsoft.SqlServer.ScriptTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_InitDate">
+      <DTS:ObjectData>
+        <ScriptProject xmlns="www.microsoft.com/SqlServer/Dts/Tasks/ScriptTask" Name="ST_InitDate">
+          <ReadWriteVariables>User::DateAujourdhui</ReadWriteVariables>
+          <ScriptCode>
+public void Main() {
+    Dts.Variables["User::DateAujourdhui"].Value = DateTime.Today;
+    Dts.TaskResult = (int)ScriptResults.Success;
+}
+          </ScriptCode>
+        </ScriptProject>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <DTS:Executable
+      DTS:refId="Package\DFT_DimMedecin_SCD"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0004-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="DFT_DimMedecin_SCD — SCD Type 2 Médecin">
+      <DTS:ObjectData>
+        <pipeline version="1">
+          <components>
+
+            <!-- SOURCE stg.Medecin avec transformations NiveauExperience, Hash -->
+            <component
+              refId="Package\DFT_DimMedecin_SCD\OLE_SRC_stgMedecin"
+              componentClassID="Microsoft.OLEDBSource"
+              name="OLE_SRC_stgMedecin">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">2</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT
+    m.MedecinID,
+    u.Nom,
+    u.Prenom,
+    s.Nom                   AS Specialite,
+    h.Nom                   AS Hopital,
+    v.Nom                   AS Ville,
+    g.Nom                   AS Gouvernorat,
+    m.AnneesExperience,
+    CASE
+        WHEN m.AnneesExperience &lt;= 5  THEN N'Junior'
+        WHEN m.AnneesExperience &lt;= 14 THEN N'Senior'
+        ELSE N'Expert'
+    END                     AS NiveauExperience,
+    CONVERT(NVARCHAR(64),
+        HASHBYTES('SHA2_256',
+            CONCAT_WS('|',
+                ISNULL(s.Nom, ''),
+                ISNULL(h.Nom, ''),
+                ISNULL(CAST(m.AnneesExperience AS NVARCHAR), '')
+            )
+        ), 2)               AS HashRecord
+FROM DME_Staging.stg.Medecin     m
+JOIN DME_SourceDB.dbo.Utilisateurs u ON m.MedecinID    = u.UtilisateurID
+LEFT JOIN DME_SourceDB.dbo.Specialites s ON m.SpecialiteID = s.SpecialiteID
+LEFT JOIN DME_SourceDB.dbo.Hopitaux    h ON m.HopitalID    = h.HopitalID
+LEFT JOIN DME_SourceDB.dbo.Villes      v ON h.VilleID      = v.VilleID
+LEFT JOIN DME_SourceDB.dbo.Gouvernorats g ON v.GouvernoratID = g.GouvernoratID
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_DimMedecin_SCD\OLE_SRC_stgMedecin.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]"
+                  name="OleDbConnection" />
+              </connections>
+            </component>
+
+            <!-- LOOKUP Dim_Medecin courant -->
+            <component
+              refId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin"
+              componentClassID="Microsoft.Lookup"
+              name="LKP_DimMedecin">
+              <properties>
+                <property name="CacheType" dataType="System.Int32">1</property>
+                <property name="NoMatchBehavior" dataType="System.Int32">0</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT MedecinKey, MedecinID, HashRecord
+FROM [dbo].[Dim_Medecin] WHERE EstCourant = 1
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]"
+                  name="OleDbConnection" />
+              </connections>
+              <outputs>
+                <output refId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Outputs[Lookup Match Output]"
+                  name="Lookup Match Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Outputs[Lookup Match Output].Columns[LKP_MedecinKey]"
+                      cachedDataType="i4" cachedName="MedecinKey" name="LKP_MedecinKey" />
+                    <outputColumn refId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Outputs[Lookup Match Output].Columns[LKP_HashRecord]"
+                      cachedDataType="wstr" cachedLength="64" cachedName="HashRecord" name="LKP_HashRecord" />
+                  </outputColumns>
+                </output>
+                <output refId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Outputs[Lookup No Match Output]"
+                  isErrorOut="false" name="Lookup No Match Output" />
+              </outputs>
+            </component>
+
+            <!-- CONDITIONAL SPLIT SCD2 -->
+            <component refId="Package\DFT_DimMedecin_SCD\CSP_SCD" componentClassID="Microsoft.ConditionalSplit"
+              name="CSP_SCD">
+              <outputs>
+                <output refId="Package\DFT_DimMedecin_SCD\CSP_SCD.Outputs[Sortie_SCD2]"
+                  exclusionGroup="1" name="Sortie_SCD2">
+                  <properties>
+                    <property name="Expression" dataType="System.String">HashRecord != LKP_HashRecord</property>
+                  </properties>
+                </output>
+                <output refId="Package\DFT_DimMedecin_SCD\CSP_SCD.Outputs[Sortie_NoChange]"
+                  exclusionGroup="1" isErrorOut="false" name="Sortie_NoChange" />
+              </outputs>
+            </component>
+
+            <!-- COMMAND Expirer ancienne version -->
+            <component refId="Package\DFT_DimMedecin_SCD\CMD_Expirer" componentClassID="Microsoft.OLEDBCommand"
+              name="CMD_Expirer">
+              <properties>
+                <property name="SqlCommand" dataType="System.String">
+UPDATE [dbo].[Dim_Medecin]
+SET DateFinValidite = DATEADD(DAY,-1,CAST(GETDATE() AS DATE)),
+    EstCourant = 0
+WHERE MedecinKey = ? AND EstCourant = 1
+                </property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_DimMedecin_SCD\CMD_Expirer.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+            </component>
+
+            <!-- UNION ALL -->
+            <component refId="Package\DFT_DimMedecin_SCD\UAL_Merge" componentClassID="Microsoft.UnionAll"
+              name="UAL_Merge" />
+
+            <!-- DERIVED COLUMN SCD2 -->
+            <component refId="Package\DFT_DimMedecin_SCD\DRV_SCD2Cols" componentClassID="Microsoft.DerivedColumn"
+              name="DRV_SCD2Cols">
+              <outputs>
+                <output refId="Package\DFT_DimMedecin_SCD\DRV_SCD2Cols.Outputs[Derived Column Output]">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_DimMedecin_SCD\DRV_SCD2Cols.Outputs[Derived Column Output].Columns[DateDebutValidite]"
+                      dataType="dbDate" name="DateDebutValidite">
+                      <properties>
+                        <property name="Expression" dataType="System.String">(DT_DBDATE)@[User::DateAujourdhui]</property>
+                      </properties>
+                    </outputColumn>
+                    <outputColumn refId="Package\DFT_DimMedecin_SCD\DRV_SCD2Cols.Outputs[Derived Column Output].Columns[EstCourant]"
+                      dataType="bool" name="EstCourant">
+                      <properties>
+                        <property name="Expression" dataType="System.String">TRUE</property>
+                      </properties>
+                    </outputColumn>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+
+            <!-- DESTINATION Dim_Medecin -->
+            <component refId="Package\DFT_DimMedecin_SCD\OLE_DST_DimMedecin" componentClassID="Microsoft.OLEDBDestination"
+              name="OLE_DST_DimMedecin">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">3</property>
+                <property name="OpenRowset" dataType="System.String">[dbo].[Dim_Medecin]</property>
+                <property name="FastLoadMaxInsertCommitSize" dataType="System.Int32">1000</property>
+              </properties>
+              <connections>
+                <connection refId="Package\DFT_DimMedecin_SCD\OLE_DST_DimMedecin.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]" name="OleDbConnection" />
+              </connections>
+            </component>
+
+          </components>
+          <paths>
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[SRC_LKP]" name="SRC_LKP"
+              endId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Inputs[Lookup Input]"
+              startId="Package\DFT_DimMedecin_SCD\OLE_SRC_stgMedecin.Outputs[OLE DB Source Output]" />
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[LKP_Match_CSP]" name="LKP_Match_CSP"
+              endId="Package\DFT_DimMedecin_SCD\CSP_SCD.Inputs[Conditional Split Input]"
+              startId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Outputs[Lookup Match Output]" />
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[CSP_CMD]" name="CSP_CMD"
+              endId="Package\DFT_DimMedecin_SCD\CMD_Expirer.Inputs[OLE DB Command Input]"
+              startId="Package\DFT_DimMedecin_SCD\CSP_SCD.Outputs[Sortie_SCD2]" />
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[CMD_UAL]" name="CMD_UAL"
+              endId="Package\DFT_DimMedecin_SCD\UAL_Merge.Inputs[Union All Input 1]"
+              startId="Package\DFT_DimMedecin_SCD\CMD_Expirer.Outputs[OLE DB Command Output]" />
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[NoMatch_UAL]" name="NoMatch_UAL"
+              endId="Package\DFT_DimMedecin_SCD\UAL_Merge.Inputs[Union All Input 2]"
+              startId="Package\DFT_DimMedecin_SCD\LKP_DimMedecin.Outputs[Lookup No Match Output]" />
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[UAL_DRV]" name="UAL_DRV"
+              endId="Package\DFT_DimMedecin_SCD\DRV_SCD2Cols.Inputs[Derived Column Input]"
+              startId="Package\DFT_DimMedecin_SCD\UAL_Merge.Outputs[Union All Output 1]" />
+            <path refId="Package\DFT_DimMedecin_SCD.Paths[DRV_DST]" name="DRV_DST"
+              endId="Package\DFT_DimMedecin_SCD\OLE_DST_DimMedecin.Inputs[OLE DB Destination Input]"
+              startId="Package\DFT_DimMedecin_SCD\DRV_SCD2Cols.Outputs[Derived Column Output]" />
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Init_DFT]"
+      DTS:From="Package\SCT_InitDate" DTS:To="Package\DFT_DimMedecin_SCD"
+      DTS:DTSID="{A1B2C3D4-0004-0006-0001-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_Init_DFT" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>

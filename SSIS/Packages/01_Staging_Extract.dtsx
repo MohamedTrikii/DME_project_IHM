@@ -1,0 +1,443 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 01_Staging_Extract.dtsx
+  Description  : Extraction OLTP → Zone Staging (copie brute)
+  Rôle         : Copier les données depuis DME_SourceDB vers
+                 DME_Staging sans transformation.
+                 Supporte le chargement FULL et INCREMENTAL.
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+  CONTROL FLOW :
+  ┌─────────────────────────────────────────────────────┐
+  │  SCT_TruncateStaging (si FULL)                      │
+  ├─────────────────────────────────────────────────────┤
+  │  SEQ_ExtractReference : Tables de référence         │
+  │   DFT_Gouvernorats → stg.Gouvernorat                │
+  │   DFT_Specialites  → stg.Specialite                 │
+  │   DFT_Diagnostics  → stg.Diagnostic (non illustré)  │
+  │   DFT_Medicaments  → stg.Medicament (non illustré)  │
+  │   DFT_TypesAnalyse → stg.TypeAnalyse (non illustré) │
+  │   DFT_Hopitaux     → stg.Hopital                    │
+  ├─────────────────────────────────────────────────────┤
+  │  SEQ_ExtractUsers : Patients + Médecins              │
+  │   DFT_Patients     → stg.Patient (avec watermark)   │
+  │   DFT_Medecins     → stg.Medecin (avec watermark)   │
+  ├─────────────────────────────────────────────────────┤
+  │  SEQ_ExtractFacts : Tables transactionnelles         │
+  │   DFT_Consultations → stg.Consultation              │
+  │   DFT_Ordonnances   → stg.Ordonnance                │
+  │   DFT_Analyses      → stg.DemandeAnalyse            │
+  │   DFT_Hospitalisations → stg.Hospitalisation        │
+  └─────────────────────────────────────────────────────┘
+
+  DATA FLOW (DFT_Patients) :
+  ┌──────────────────────────────────────────────────────┐
+  │  OLE DB Source (DME_SourceDB.dbo.Patients JOIN       │
+  │               dbo.Utilisateurs WHERE DateMod > ?)   │
+  │         ↓                                            │
+  │  Derived Column : ETL_Lot = @[User::LotID]           │
+  │                   ETL_Statut = "NOUVEAU"             │
+  │         ↓                                            │
+  │  OLE DB Destination (DME_Staging.stg.Patient)       │
+  └──────────────────────────────────────────────────────┘
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0002-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="01_Staging_Extract"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0002-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[SourceDB]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0002-0002-0001-000000000001}"
+      DTS:ObjectName="SourceDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_SourceDB;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[StagingDB]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0002-0002-0002-000000000001}"
+      DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0002-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="8" DTS:DTSID="{A1B2C3D4-0002-0003-0002-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="TypeExecution">
+      <DTS:VariableValue DTS:DataType="8">FULL</DTS:VariableValue>
+    </DTS:Variable>
+    <!-- LotID = identifiant unique du lot (RunID + timestamp) -->
+    <DTS:Variable DTS:DataType="8" DTS:DTSID="{A1B2C3D4-0002-0003-0003-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="LotID">
+      <DTS:VariableValue DTS:DataType="8">LOT_00000</DTS:VariableValue>
+    </DTS:Variable>
+    <!-- Watermarks pour chargement incrémental -->
+    <DTS:Variable DTS:DataType="16" DTS:DTSID="{A1B2C3D4-0002-0003-0004-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="WM_Patients">
+      <DTS:VariableValue DTS:DataType="16">2020-01-01</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="16" DTS:DTSID="{A1B2C3D4-0002-0003-0004-000000000002}"
+      DTS:Namespace="User" DTS:ObjectName="WM_Consultations">
+      <DTS:VariableValue DTS:DataType="16">2022-01-01</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="16" DTS:DTSID="{A1B2C3D4-0002-0003-0004-000000000003}"
+      DTS:Namespace="User" DTS:ObjectName="WM_Hospitalisations">
+      <DTS:VariableValue DTS:DataType="16">2022-01-01</DTS:VariableValue>
+    </DTS:Variable>
+    <!-- SQL paramétré pour extraction patients (rempli par Script Task) -->
+    <DTS:Variable DTS:DataType="8" DTS:DTSID="{A1B2C3D4-0002-0003-0005-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="SQL_ExtractPatients">
+      <DTS:VariableValue DTS:DataType="8">SELECT p.PatientID, u.Nom, u.Prenom, p.Sexe, p.DateNaissance, p.VilleID, p.GroupeSanguin, p.Assurance, u.Statut FROM dbo.Patients p JOIN dbo.Utilisateurs u ON p.PatientID = u.UtilisateurID</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <!-- Générer le LotID et charger les watermarks -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_Init"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0002-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_Init — Initialiser LotID et Watermarks">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="SELECT
+    CONCAT(N'LOT_', FORMAT(SYSUTCDATETIME(),'yyyyMMdd_HHmmss')) AS LotID,
+    (SELECT DerniereValeur FROM ctl.Watermark WHERE TableSource = 'Patients')       AS WM_Patients,
+    (SELECT DerniereValeur FROM ctl.Watermark WHERE TableSource = 'Consultations')  AS WM_Consultations,
+    (SELECT DerniereValeur FROM ctl.Watermark WHERE TableSource = 'Hospitalisations') AS WM_Hospitalisations;"
+          SQLTask:ResultSetType="1">
+          <SQLTask:ResultBindings>
+            <SQLTask:ResultBinding SQLTask:DtsVariableName="User::LotID"                SQLTask:ResultName="LotID" />
+            <SQLTask:ResultBinding SQLTask:DtsVariableName="User::WM_Patients"           SQLTask:ResultName="WM_Patients" />
+            <SQLTask:ResultBinding SQLTask:DtsVariableName="User::WM_Consultations"      SQLTask:ResultName="WM_Consultations" />
+            <SQLTask:ResultBinding SQLTask:DtsVariableName="User::WM_Hospitalisations"   SQLTask:ResultName="WM_Hospitalisations" />
+          </SQLTask:ResultBindings>
+        </SQLTask:SqlTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Vider le staging si chargement FULL -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_TruncateStaging"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0002-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_TruncateStaging — Vider staging (FULL uniquement)">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="EXEC stg.usp_TruncateAllStaging;" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- ─────────────────────────────────────────────────
+         DATA FLOW : Extraction Patients
+         OLE DB Source → Derived Column → OLE DB Destination
+         ───────────────────────────────────────────────── -->
+    <DTS:Executable
+      DTS:refId="Package\DFT_Patients"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0002-0005-0003-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="DFT_Patients — Extraction des patients">
+      <DTS:ObjectData>
+        <pipeline version="1">
+          <components>
+
+            <!-- SOURCE : Patients + Utilisateurs depuis OLTP -->
+            <component
+              refId="Package\DFT_Patients\OLE_SRC_Patients"
+              componentClassID="Microsoft.OLEDBSource"
+              description="Extraction patients depuis DME_SourceDB"
+              name="OLE_SRC_Patients"
+              usesDispositions="true"
+              version="7">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32" description="The mode used to access the database.">2</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT
+    p.PatientID,
+    u.Nom,
+    u.Prenom,
+    p.Sexe,
+    p.DateNaissance,
+    p.VilleID,
+    p.GroupeSanguin,
+    p.Assurance,
+    u.Statut
+FROM dbo.Patients p
+JOIN dbo.Utilisateurs u ON p.PatientID = u.UtilisateurID
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_Patients\OLE_SRC_Patients.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[SourceDB]"
+                  connectionManagerRefId="Package.ConnectionManagers[SourceDB]"
+                  description="OleDbConnection"
+                  name="OleDbConnection" />
+              </connections>
+              <outputs>
+                <output refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output]"
+                  name="OLE DB Source Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[PatientID]"
+                      dataType="i4" name="PatientID" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[Nom]"
+                      dataType="wstr" length="100" name="Nom" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[Prenom]"
+                      dataType="wstr" length="100" name="Prenom" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[Sexe]"
+                      dataType="wstr" length="1" name="Sexe" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[DateNaissance]"
+                      dataType="dbDate" name="DateNaissance" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[VilleID]"
+                      dataType="i4" name="VilleID" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[GroupeSanguin]"
+                      dataType="wstr" length="5" name="GroupeSanguin" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[Assurance]"
+                      dataType="wstr" length="50" name="Assurance" />
+                    <outputColumn refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output].Columns[Statut]"
+                      dataType="wstr" length="20" name="Statut" />
+                  </outputColumns>
+                </output>
+                <output refId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Error Output]"
+                  isErrorOut="true" name="OLE DB Source Error Output">
+                </output>
+              </outputs>
+            </component>
+
+            <!-- DERIVED COLUMN : Ajouter colonnes ETL_Lot et ETL_Statut -->
+            <component
+              refId="Package\DFT_Patients\DRV_ETL_Colonnes"
+              componentClassID="Microsoft.DerivedColumn"
+              description="Ajouter colonnes de contrôle ETL"
+              name="DRV_ETL_Colonnes">
+              <inputs>
+                <input refId="Package\DFT_Patients\DRV_ETL_Colonnes.Inputs[Derived Column Input]"
+                  name="Derived Column Input">
+                </input>
+              </inputs>
+              <outputs>
+                <output refId="Package\DFT_Patients\DRV_ETL_Colonnes.Outputs[Derived Column Output]"
+                  name="Derived Column Output">
+                  <outputColumns>
+                    <!-- Ajout de la colonne ETL_Lot -->
+                    <outputColumn
+                      refId="Package\DFT_Patients\DRV_ETL_Colonnes.Outputs[Derived Column Output].Columns[ETL_Lot]"
+                      dataType="wstr" length="50" name="ETL_Lot">
+                      <properties>
+                        <property name="FriendlyExpression" dataType="System.String">@[User::LotID]</property>
+                        <property name="Expression" dataType="System.String">@[User::LotID]</property>
+                      </properties>
+                    </outputColumn>
+                    <!-- Ajout de la colonne ETL_Statut -->
+                    <outputColumn
+                      refId="Package\DFT_Patients\DRV_ETL_Colonnes.Outputs[Derived Column Output].Columns[ETL_Statut]"
+                      dataType="wstr" length="20" name="ETL_Statut">
+                      <properties>
+                        <property name="FriendlyExpression" dataType="System.String">"NOUVEAU"</property>
+                        <property name="Expression" dataType="System.String">"NOUVEAU"</property>
+                      </properties>
+                    </outputColumn>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+
+            <!-- DESTINATION : stg.Patient dans DME_Staging -->
+            <component
+              refId="Package\DFT_Patients\OLE_DST_stgPatient"
+              componentClassID="Microsoft.OLEDBDestination"
+              description="Chargement dans stg.Patient"
+              name="OLE_DST_stgPatient"
+              usesDispositions="true"
+              version="4">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">3</property>
+                <property name="OpenRowset" dataType="System.String">[stg].[Patient]</property>
+                <property name="FastLoadMaxInsertCommitSize" dataType="System.Int32">10000</property>
+                <property name="FastLoadOptions" dataType="System.String">TABLOCK,CHECK_CONSTRAINTS</property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_Patients\OLE_DST_stgPatient.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[StagingDB]"
+                  connectionManagerRefId="Package.ConnectionManagers[StagingDB]"
+                  name="OleDbConnection" />
+              </connections>
+            </component>
+
+          </components>
+          <!-- Chemins du Data Flow -->
+          <paths>
+            <path
+              refId="Package\DFT_Patients.Paths[SRC_to_DRV]"
+              endId="Package\DFT_Patients\DRV_ETL_Colonnes.Inputs[Derived Column Input]"
+              startId="Package\DFT_Patients\OLE_SRC_Patients.Outputs[OLE DB Source Output]"
+              name="SRC_to_DRV" />
+            <path
+              refId="Package\DFT_Patients.Paths[DRV_to_DST]"
+              endId="Package\DFT_Patients\OLE_DST_stgPatient.Inputs[OLE DB Destination Input]"
+              startId="Package\DFT_Patients\DRV_ETL_Colonnes.Outputs[Derived Column Output]"
+              name="DRV_to_DST" />
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- DATA FLOW : Extraction Consultations (Incrémental par watermark) -->
+    <DTS:Executable
+      DTS:refId="Package\DFT_Consultations"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0002-0005-0004-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="DFT_Consultations — Extraction incrémentale consultations">
+      <DTS:ObjectData>
+        <pipeline version="1">
+          <components>
+            <!-- SOURCE avec filtre watermark -->
+            <component
+              refId="Package\DFT_Consultations\OLE_SRC_Consultations"
+              componentClassID="Microsoft.OLEDBSource"
+              name="OLE_SRC_Consultations">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">2</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT
+    ConsultationID, PatientID, MedecinID, HopitalID, DiagnosticID,
+    DateConsultation, TypeConsultation, DureeMinutes, Notes
+FROM dbo.Consultations
+WHERE DateConsultation &gt;= ?
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_Consultations\OLE_SRC_Consultations.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[SourceDB]"
+                  connectionManagerRefId="Package.ConnectionManagers[SourceDB]"
+                  name="OleDbConnection" />
+              </connections>
+              <!-- Paramètre : watermark -->
+              <parameterBindings>
+                <parameterBinding
+                  refId="Package\DFT_Consultations\OLE_SRC_Consultations.ParameterBindings[Param_0]"
+                  dataType="16"
+                  parameterIndex="0"
+                  parameterName="0"
+                  variableName="User::WM_Consultations" />
+              </parameterBindings>
+            </component>
+            <!-- DESTINATION stg.Consultation -->
+            <component
+              refId="Package\DFT_Consultations\OLE_DST_stgConsultation"
+              componentClassID="Microsoft.OLEDBDestination"
+              name="OLE_DST_stgConsultation">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">3</property>
+                <property name="OpenRowset" dataType="System.String">[stg].[Consultation]</property>
+                <property name="FastLoadMaxInsertCommitSize" dataType="System.Int32">10000</property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_Consultations\OLE_DST_stgConsultation.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[StagingDB]"
+                  connectionManagerRefId="Package.ConnectionManagers[StagingDB]"
+                  name="OleDbConnection" />
+              </connections>
+            </component>
+          </components>
+          <paths>
+            <path
+              refId="Package\DFT_Consultations.Paths[SRC_to_DST]"
+              endId="Package\DFT_Consultations\OLE_DST_stgConsultation.Inputs[OLE DB Destination Input]"
+              startId="Package\DFT_Consultations\OLE_SRC_Consultations.Outputs[OLE DB Source Output]"
+              name="SRC_to_DST" />
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- Mettre à jour le watermark Consultations après extraction -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_UpdateWatermark"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0002-0005-0005-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_UpdateWatermark — Mettre à jour watermarks">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="EXEC ctl.usp_SetWatermark @TableSource = 'Consultations',    @NouvelleValeur = SYSUTCDATETIME();
+EXEC ctl.usp_SetWatermark @TableSource = 'Hospitalisations',  @NouvelleValeur = SYSUTCDATETIME();
+EXEC ctl.usp_SetWatermark @TableSource = 'DemandesAnalyse',   @NouvelleValeur = SYSUTCDATETIME();" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Init_Truncate]"
+      DTS:From="Package\SCT_Init"
+      DTS:To="Package\SCT_TruncateStaging"
+      DTS:DTSID="{A1B2C3D4-0002-0006-0001-000000000001}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Init_Truncate" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Truncate_Patients]"
+      DTS:From="Package\SCT_TruncateStaging"
+      DTS:To="Package\DFT_Patients"
+      DTS:DTSID="{A1B2C3D4-0002-0006-0002-000000000001}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Truncate_Patients" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Patients_Consultations]"
+      DTS:From="Package\DFT_Patients"
+      DTS:To="Package\DFT_Consultations"
+      DTS:DTSID="{A1B2C3D4-0002-0006-0003-000000000001}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Patients_Consultations" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Consultations_WM]"
+      DTS:From="Package\DFT_Consultations"
+      DTS:To="Package\SCT_UpdateWatermark"
+      DTS:DTSID="{A1B2C3D4-0002-0006-0004-000000000001}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Consultations_WM" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>
