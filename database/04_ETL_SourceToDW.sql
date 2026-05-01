@@ -153,35 +153,47 @@ PRINT '--- ÉTAPE 2.7 : Peuplement de Dim_Patient ---';
 
 TRUNCATE TABLE Dim_Patient;
 
+-- CTE pour calculer l'âge exact une seule fois et le réutiliser dans GroupeAge
+WITH PatientAge AS (
+    SELECT
+        p.PatientID,
+        p.Sexe,
+        p.DateNaissance,
+        p.VilleID,
+        p.GroupeSanguin,
+        p.Assurance,
+        -- Calcul de l'âge en années complètes (une seule fois)
+        AgeCalc = DATEDIFF(YEAR, p.DateNaissance, GETDATE())
+            - CASE WHEN MONTH(p.DateNaissance) > MONTH(GETDATE())
+                   OR (MONTH(p.DateNaissance) = MONTH(GETDATE()) AND DAY(p.DateNaissance) > DAY(GETDATE()))
+                   THEN 1 ELSE 0 END
+    FROM DME_SourceDB.dbo.Patients p
+)
 INSERT INTO Dim_Patient (PatientID, Nom, Prenom, Sexe, DateNaissance, Age, GroupeAge, Ville, Gouvernorat, GroupeSanguin, Assurance, Statut)
 SELECT
     u.UtilisateurID     AS PatientID,
     u.Nom,
     u.Prenom,
-    p.Sexe,
-    p.DateNaissance,
-    -- Calcul de l'âge en années complètes
-    Age = DATEDIFF(YEAR, p.DateNaissance, GETDATE())
-        - CASE WHEN MONTH(p.DateNaissance) > MONTH(GETDATE())
-               OR (MONTH(p.DateNaissance) = MONTH(GETDATE()) AND DAY(p.DateNaissance) > DAY(GETDATE()))
-               THEN 1 ELSE 0 END,
-    -- Classification par groupe d'âge
+    pa.Sexe,
+    pa.DateNaissance,
+    pa.AgeCalc          AS Age,
+    -- Classification par groupe d'âge (utilise la valeur déjà calculée)
     GroupeAge = CASE
-        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) <= 17  THEN N'0-17'
-        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) <= 35  THEN N'18-35'
-        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) <= 55  THEN N'36-55'
-        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) <= 75  THEN N'56-75'
+        WHEN pa.AgeCalc <= 17 THEN N'0-17'
+        WHEN pa.AgeCalc <= 35 THEN N'18-35'
+        WHEN pa.AgeCalc <= 55 THEN N'36-55'
+        WHEN pa.AgeCalc <= 75 THEN N'56-75'
         ELSE N'75+'
     END,
     v.Nom               AS Ville,
     g.Nom               AS Gouvernorat,
-    p.GroupeSanguin,
-    p.Assurance,
+    pa.GroupeSanguin,
+    pa.Assurance,
     u.Statut
-FROM DME_SourceDB.dbo.Patients        p
-JOIN DME_SourceDB.dbo.Utilisateurs    u ON p.PatientID      = u.UtilisateurID
-LEFT JOIN DME_SourceDB.dbo.Villes     v ON p.VilleID        = v.VilleID
-LEFT JOIN DME_SourceDB.dbo.Gouvernorats g ON v.GouvernoratID = g.GouvernoratID;
+FROM PatientAge                              pa
+JOIN DME_SourceDB.dbo.Utilisateurs           u  ON pa.PatientID     = u.UtilisateurID
+LEFT JOIN DME_SourceDB.dbo.Villes            v  ON pa.VilleID       = v.VilleID
+LEFT JOIN DME_SourceDB.dbo.Gouvernorats      g  ON v.GouvernoratID  = g.GouvernoratID;
 
 PRINT CONCAT('  -> Dim_Patient : ', @@ROWCOUNT, ' lignes insérées');
 GO
@@ -289,18 +301,13 @@ SELECT
     MedicamentKey  = dmed.MedicamentKey,
     ConsultationKey = fc.ConsultationKey,
     OrdonnanceID   = o.OrdonnanceID,
-    -- Conversion de la durée texte en nombre de jours
-    DureeTrtJours  = CASE
-        WHEN o.DureeTrt LIKE N'%90%'  THEN 90
-        WHEN o.DureeTrt LIKE N'%60%'  THEN 60
-        WHEN o.DureeTrt LIKE N'%30%'  THEN 30
-        WHEN o.DureeTrt LIKE N'%14%'  THEN 14
-        WHEN o.DureeTrt LIKE N'%10%'  THEN 10
-        WHEN o.DureeTrt LIKE N'%7%'   THEN 7
-        WHEN o.DureeTrt LIKE N'%5%'   THEN 5
-        WHEN o.DureeTrt LIKE N'%3%'   THEN 3
-        ELSE NULL
-    END
+    -- Extraction précise du nombre de jours depuis le champ DureeTrt (format "N jours")
+    -- TRY_CAST sur la partie numérique extraite avant le mot "jour"
+    DureeTrtJours  = TRY_CAST(
+        LTRIM(RTRIM(
+            LEFT(o.DureeTrt, CHARINDEX(N'jour', LOWER(o.DureeTrt)) - 1)
+        )) AS INT
+    )
 FROM DME_SourceDB.dbo.Ordonnances     o
 JOIN Dim_Patient      dp   ON o.PatientID     = dp.PatientID
 JOIN Dim_Medecin      dm   ON o.MedecinID     = dm.MedecinID
