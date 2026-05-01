@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Fichier de configuration SSIS : DME_ETL.dtsConfig
+  Description  : Fichier de configuration XML pour les packages
+                 SSIS DME_BI. Surcharge les propriétés sensibles
+                 (connexions, chemins) sans recompiler les packages.
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  Usage        : Référencé dans chaque package via
+                 DTS:Configurations/DTS:Configuration
+  ============================================================
+  Adapte ces valeurs à ton environnement SQL Server !
+-->
+<DTSConfiguration>
+
+  <!-- =====================================================
+       CHAÎNES DE CONNEXION
+       ===================================================== -->
+
+  <!-- Connexion DME_SourceDB (OLTP) -->
+  <DTSConfigurationHeading>
+    <DTSConfigurationFileInfo GeneratedBy="DME_BI_Team" GeneratedFromPackageName="00_Master_ETL"
+      GeneratedFromPackageID="{A1B2C3D4-0001-0001-0001-000000000001}"
+      GeneratedDate="5/1/2026 2:00:00 AM" />
+  </DTSConfigurationHeading>
+
+  <Configuration ConfiguredType="Property" Path="\Package.Connections[SourceDB].Properties[ConnectionString]"
+    ValueType="String">
+    <ConfiguredValue>Data Source=.\SQLEXPRESS;Initial Catalog=DME_SourceDB;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;</ConfiguredValue>
+  </Configuration>
+
+  <!-- Connexion DME_Staging -->
+  <Configuration ConfiguredType="Property" Path="\Package.Connections[StagingDB].Properties[ConnectionString]"
+    ValueType="String">
+    <ConfiguredValue>Data Source=.\SQLEXPRESS;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;</ConfiguredValue>
+  </Configuration>
+
+  <!-- Connexion DME_DataWarehouse -->
+  <Configuration ConfiguredType="Property" Path="\Package.Connections[DWH].Properties[ConnectionString]"
+    ValueType="String">
+    <ConfiguredValue>Data Source=.\SQLEXPRESS;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;</ConfiguredValue>
+  </Configuration>
+
+  <!-- =====================================================
+       VARIABLES DE PACKAGES
+       ===================================================== -->
+
+  <!-- Type d'exécution : FULL ou INCREMENTAL -->
+  <Configuration ConfiguredType="Property" Path="\Package.Variables[User::TypeExecution].Properties[Value]"
+    ValueType="String">
+    <ConfiguredValue>FULL</ConfiguredValue>
+  </Configuration>
+
+  <!-- Environnement -->
+  <Configuration ConfiguredType="Property" Path="\Package.Variables[User::Environnement].Properties[Value]"
+    ValueType="String">
+    <ConfiguredValue>PROD</ConfiguredValue>
+  </Configuration>
+
+  <!-- Années pour Dim_Date -->
+  <Configuration ConfiguredType="Property" Path="\Package.Variables[User::DimDate_AnneeDebut].Properties[Value]"
+    ValueType="Int32">
+    <ConfiguredValue>2020</ConfiguredValue>
+  </Configuration>
+
+  <Configuration ConfiguredType="Property" Path="\Package.Variables[User::DimDate_AnneeFin].Properties[Value]"
+    ValueType="Int32">
+    <ConfiguredValue>2026</ConfiguredValue>
+  </Configuration>
+
+  <!-- =====================================================
+       CHEMINS DE FICHIERS (adapter selon l'environnement)
+       ===================================================== -->
+
+  <!-- Chemin des fichiers de log -->
+  <Configuration ConfiguredType="Property" Path="\Package.Connections[LogFile].Properties[ConnectionString]"
+    ValueType="String">
+    <ConfiguredValue>C:\DME_BI\Logs\ETL_Master.log</ConfiguredValue>
+  </Configuration>
+
+  <!-- Chemin du fichier d'erreurs Fact_Consultation -->
+  <Configuration ConfiguredType="Property" Path="\Package.Connections[ErrorFile].Properties[ConnectionString]"
+    ValueType="String">
+    <ConfiguredValue>C:\DME_BI\Errors\Fact_Consultation_Errors.csv</ConfiguredValue>
+  </Configuration>
+
+</DTSConfiguration>

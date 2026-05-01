@@ -1,0 +1,427 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 02_Load_Dim_Patient.dtsx
+  Description  : Chargement Dim_Patient avec SCD Type 1 et Type 2
+  Rôle         : - SCD Type 1 : corrections (nom, prénom)
+                 - SCD Type 2 : historiser les changements de
+                   ville, gouvernorat, assurance, statut
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+  DATA FLOW principal :
+  ┌─────────────────────────────────────────────────────────┐
+  │  OLE DB Source (stg.Patient JOIN SourceDB pour Ville)   │
+  │           ↓                                             │
+  │  Derived Column                                         │
+  │   • Age = DATEDIFF(YEAR, DateNaissance, GETDATE()) - δ  │
+  │   • GroupeAge = CASE Age WHEN ...                       │
+  │   • HashRecord = SHA2_256(Ville|Gouv|Assurance|Statut)  │
+  │           ↓                                             │
+  │  Lookup (Dim_Patient par PatientID, EstCourant=1)        │
+  │   ├── MATCH (ligne existante)                           │
+  │   │     ↓                                               │
+  │   │  Conditional Split                                  │
+  │   │   ├── HashRecord différent → Flux SCD2              │
+  │   │   │     ↓                                           │
+  │   │   │  OLE DB Command : Expirer l'ancienne version    │
+  │   │   │     ↓                                           │
+  │   │   │  Union All ←───────────────────────────────┐   │
+  │   │   └── HashRecord identique → Ignorer           │   │
+  │   │                                                 │   │
+  │   └── NO MATCH (nouveau patient)                   │   │
+  │         └──────────────────────────────────────────┘   │
+  │               ↓                                         │
+  │         OLE DB Destination (INSERT nouvelles lignes)    │
+  └─────────────────────────────────────────────────────────┘
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0003-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="02_Load_Dim_Patient"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0003-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[SourceDB]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0003-0002-0001-000000000001}"
+      DTS:ObjectName="SourceDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_SourceDB;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[StagingDB]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0003-0002-0002-000000000001}"
+      DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[DWH]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0003-0002-0003-000000000001}"
+      DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0003-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0003-0003-0002-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="NbInsert">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0003-0003-0003-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="NbSCD2">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="16" DTS:DTSID="{A1B2C3D4-0003-0003-0004-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="DateAujourdhui">
+      <DTS:VariableValue DTS:DataType="16">2026-05-01</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable DTS:DataType="16" DTS:DTSID="{A1B2C3D4-0003-0003-0005-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="DateHier">
+      <DTS:VariableValue DTS:DataType="16">2026-04-30</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <!-- Initialiser les variables de date -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_InitDates"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ScriptTask.ScriptTask, Microsoft.SqlServer.ScriptTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0003-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ScriptTask.ScriptTask, Microsoft.SqlServer.ScriptTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_InitDates — Initialiser dates SCD2">
+      <DTS:ObjectData>
+        <ScriptProject xmlns="www.microsoft.com/SqlServer/Dts/Tasks/ScriptTask" Name="ST_InitDates" VSTAMajorVersion="3">
+          <ScriptLanguage>CSharp</ScriptLanguage>
+          <ReadOnlyVariables></ReadOnlyVariables>
+          <ReadWriteVariables>User::DateAujourdhui,User::DateHier</ReadWriteVariables>
+          <ScriptCode>
+// Script Task C# : Initialiser les dates pour SCD2
+// DateAujourdhui = aujourd'hui (début de validité nouvelles versions)
+// DateHier = aujourd'hui - 1 jour (fin de validité anciennes versions)
+public void Main()
+{
+    Dts.Variables["User::DateAujourdhui"].Value = DateTime.Today;
+    Dts.Variables["User::DateHier"].Value = DateTime.Today.AddDays(-1);
+    Dts.TaskResult = (int)ScriptResults.Success;
+}
+          </ScriptCode>
+        </ScriptProject>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- DATA FLOW SCD Type 2 Dim_Patient -->
+    <DTS:Executable
+      DTS:refId="Package\DFT_DimPatient_SCD"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0003-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.Dataflow.DataFlowTask, Microsoft.SqlServer.PipelineHost, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="DFT_DimPatient_SCD — SCD Type 1 et 2">
+      <DTS:ObjectData>
+        <pipeline version="1">
+          <components>
+
+            <!-- SOURCE : stg.Patient + enrichissement Ville/Gouvernorat -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\OLE_SRC_stgPatient"
+              componentClassID="Microsoft.OLEDBSource"
+              name="OLE_SRC_stgPatient"
+              description="Lire depuis stg.Patient avec résolution Ville/Gouvernorat">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">2</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT
+    p.PatientID,
+    p.Nom,
+    p.Prenom,
+    p.Sexe,
+    p.DateNaissance,
+    DATEDIFF(YEAR, p.DateNaissance, GETDATE())
+        - CASE WHEN MONTH(p.DateNaissance) &gt; MONTH(GETDATE())
+               OR (MONTH(p.DateNaissance) = MONTH(GETDATE()) AND DAY(p.DateNaissance) &gt; DAY(GETDATE()))
+               THEN 1 ELSE 0 END            AS Age,
+    CASE
+        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) &lt;= 17 THEN N'0-17'
+        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) &lt;= 35 THEN N'18-35'
+        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) &lt;= 55 THEN N'36-55'
+        WHEN DATEDIFF(YEAR, p.DateNaissance, GETDATE()) &lt;= 75 THEN N'56-75'
+        ELSE N'75+'
+    END                                      AS GroupeAge,
+    v.Nom           AS Ville,
+    g.Nom           AS Gouvernorat,
+    p.GroupeSanguin,
+    p.Assurance,
+    p.Statut,
+    -- Hash SHA-256 pour détecter les changements SCD2
+    CONVERT(NVARCHAR(64),
+        HASHBYTES('SHA2_256',
+            CONCAT_WS('|',
+                ISNULL(v.Nom,  ''),
+                ISNULL(g.Nom,  ''),
+                ISNULL(p.GroupeSanguin, ''),
+                ISNULL(p.Assurance, ''),
+                ISNULL(p.Statut, '')
+            )
+        ), 2)                                AS HashRecord
+FROM DME_Staging.stg.Patient p
+LEFT JOIN DME_SourceDB.dbo.Villes      v ON p.VilleID       = v.VilleID
+LEFT JOIN DME_SourceDB.dbo.Gouvernorats g ON v.GouvernoratID = g.GouvernoratID
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_DimPatient_SCD\OLE_SRC_stgPatient.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]"
+                  name="OleDbConnection" />
+              </connections>
+            </component>
+
+            <!-- LOOKUP : Comparer avec Dim_Patient (version courante) -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\LKP_DimPatient"
+              componentClassID="Microsoft.Lookup"
+              description="Rechercher PatientID dans Dim_Patient (EstCourant=1)"
+              name="LKP_DimPatient">
+              <properties>
+                <property name="CacheType" dataType="System.Int32" description="Full, Partial, or No cache.">1</property>
+                <property name="NoMatchBehavior" dataType="System.Int32">0</property>
+                <property name="SqlCommand" dataType="System.String">
+SELECT PatientKey, PatientID, HashRecord
+FROM [dbo].[Dim_Patient]
+WHERE EstCourant = 1
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]"
+                  name="OleDbConnection" />
+              </connections>
+              <inputs>
+                <input refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Inputs[Lookup Input]"
+                  name="Lookup Input">
+                  <inputColumns>
+                    <!-- Colonne de jointure -->
+                    <inputColumn
+                      refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Inputs[Lookup Input].Columns[PatientID]"
+                      joinToReferenceColumn="PatientID"
+                      lineageId="Package\DFT_DimPatient_SCD\OLE_SRC_stgPatient.Outputs[OLE DB Source Output].Columns[PatientID]"
+                      cachedName="PatientID"
+                      name="PatientID" />
+                  </inputColumns>
+                </input>
+              </inputs>
+              <outputs>
+                <output refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Outputs[Lookup Match Output]"
+                  name="Lookup Match Output">
+                  <outputColumns>
+                    <!-- Retourner PatientKey et HashRecord existants pour comparaison -->
+                    <outputColumn
+                      refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Outputs[Lookup Match Output].Columns[LKP_PatientKey]"
+                      cachedDataType="i4"
+                      cachedName="PatientKey"
+                      name="LKP_PatientKey" />
+                    <outputColumn
+                      refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Outputs[Lookup Match Output].Columns[LKP_HashRecord]"
+                      cachedDataType="wstr"
+                      cachedLength="64"
+                      cachedName="HashRecord"
+                      name="LKP_HashRecord" />
+                  </outputColumns>
+                </output>
+                <!-- Flux No Match = nouveaux patients -->
+                <output refId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Outputs[Lookup No Match Output]"
+                  isErrorOut="false" name="Lookup No Match Output">
+                </output>
+              </outputs>
+            </component>
+
+            <!-- CONDITIONAL SPLIT : SCD2 (hash différent) vs NOCHANGE -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\CSP_SCD_Decision"
+              componentClassID="Microsoft.ConditionalSplit"
+              description="Décider entre SCD2, SCD1 ou pas de changement"
+              name="CSP_SCD_Decision">
+              <outputs>
+                <!-- Sortie 1 : Hash différent = SCD Type 2 -->
+                <output refId="Package\DFT_DimPatient_SCD\CSP_SCD_Decision.Outputs[Sortie_SCD2]"
+                  exclusionGroup="1" name="Sortie_SCD2">
+                  <properties>
+                    <property name="EvaluationOrder" dataType="System.Int32">0</property>
+                    <property name="FriendlyExpression" dataType="System.String">HashRecord != LKP_HashRecord</property>
+                    <property name="Expression" dataType="System.String">HashRecord != LKP_HashRecord</property>
+                  </properties>
+                </output>
+                <!-- Sortie par défaut : pas de changement, ignorer -->
+                <output refId="Package\DFT_DimPatient_SCD\CSP_SCD_Decision.Outputs[Sortie_NoChange]"
+                  exclusionGroup="1" isErrorOut="false" name="Sortie_NoChange">
+                </output>
+              </outputs>
+            </component>
+
+            <!-- OLE DB COMMAND : Expirer l'ancienne version (SCD2) -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\CMD_ExpirerAncienneVersion"
+              componentClassID="Microsoft.OLEDBCommand"
+              description="Marquer la version précédente comme expirée (DateFinValidite = hier)"
+              name="CMD_ExpirerAncienneVersion">
+              <properties>
+                <property name="SqlCommand" dataType="System.String">
+UPDATE [dbo].[Dim_Patient]
+SET    DateFinValidite = ?,
+       EstCourant      = 0
+WHERE  PatientKey = ?
+  AND  EstCourant = 1
+                </property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_DimPatient_SCD\CMD_ExpirerAncienneVersion.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]"
+                  name="OleDbConnection" />
+              </connections>
+            </component>
+
+            <!-- UNION ALL : Fusionner nouvelles lignes (INSERT + SCD2) -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\UAL_NouvellesVersions"
+              componentClassID="Microsoft.UnionAll"
+              description="Fusionner nouveaux patients + nouvelles versions SCD2"
+              name="UAL_NouvellesVersions">
+            </component>
+
+            <!-- DERIVED COLUMN : Ajouter DateDebutValidite et EstCourant -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes"
+              componentClassID="Microsoft.DerivedColumn"
+              description="Ajouter colonnes SCD2 : DateDebutValidite, EstCourant"
+              name="DRV_SCD2_Colonnes">
+              <outputs>
+                <output refId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes.Outputs[Derived Column Output]"
+                  name="Derived Column Output">
+                  <outputColumns>
+                    <outputColumn
+                      refId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes.Outputs[Derived Column Output].Columns[DateDebutValidite]"
+                      dataType="dbDate" name="DateDebutValidite">
+                      <properties>
+                        <property name="FriendlyExpression" dataType="System.String">(DT_DBDATE)@[User::DateAujourdhui]</property>
+                        <property name="Expression" dataType="System.String">(DT_DBDATE)@[User::DateAujourdhui]</property>
+                      </properties>
+                    </outputColumn>
+                    <outputColumn
+                      refId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes.Outputs[Derived Column Output].Columns[EstCourant]"
+                      dataType="bool" name="EstCourant">
+                      <properties>
+                        <property name="FriendlyExpression" dataType="System.String">TRUE</property>
+                        <property name="Expression" dataType="System.String">TRUE</property>
+                      </properties>
+                    </outputColumn>
+                    <outputColumn
+                      refId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes.Outputs[Derived Column Output].Columns[DateFinValidite]"
+                      dataType="dbDate" name="DateFinValidite">
+                      <properties>
+                        <property name="FriendlyExpression" dataType="System.String">NULL(DT_DBDATE)</property>
+                        <property name="Expression" dataType="System.String">NULL(DT_DBDATE)</property>
+                      </properties>
+                    </outputColumn>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+
+            <!-- DESTINATION : Dim_Patient (INSERT nouvelles lignes/versions) -->
+            <component
+              refId="Package\DFT_DimPatient_SCD\OLE_DST_DimPatient"
+              componentClassID="Microsoft.OLEDBDestination"
+              description="Insérer nouvelles lignes dans Dim_Patient"
+              name="OLE_DST_DimPatient">
+              <properties>
+                <property name="AccessMode" dataType="System.Int32">3</property>
+                <property name="OpenRowset" dataType="System.String">[dbo].[Dim_Patient]</property>
+                <property name="FastLoadMaxInsertCommitSize" dataType="System.Int32">1000</property>
+              </properties>
+              <connections>
+                <connection
+                  refId="Package\DFT_DimPatient_SCD\OLE_DST_DimPatient.Connections[OleDbConnection]"
+                  connectionManagerID="Package.ConnectionManagers[DWH]"
+                  connectionManagerRefId="Package.ConnectionManagers[DWH]"
+                  name="OleDbConnection" />
+              </connections>
+            </component>
+
+          </components>
+
+          <paths>
+            <path refId="Package\DFT_DimPatient_SCD.Paths[SRC_to_LKP]"
+              endId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Inputs[Lookup Input]"
+              startId="Package\DFT_DimPatient_SCD\OLE_SRC_stgPatient.Outputs[OLE DB Source Output]"
+              name="SRC_to_LKP" />
+            <path refId="Package\DFT_DimPatient_SCD.Paths[LKP_Match_to_CSP]"
+              endId="Package\DFT_DimPatient_SCD\CSP_SCD_Decision.Inputs[Conditional Split Input]"
+              startId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Outputs[Lookup Match Output]"
+              name="LKP_Match_to_CSP" />
+            <path refId="Package\DFT_DimPatient_SCD.Paths[CSP_SCD2_to_CMD]"
+              endId="Package\DFT_DimPatient_SCD\CMD_ExpirerAncienneVersion.Inputs[OLE DB Command Input]"
+              startId="Package\DFT_DimPatient_SCD\CSP_SCD_Decision.Outputs[Sortie_SCD2]"
+              name="CSP_SCD2_to_CMD" />
+            <path refId="Package\DFT_DimPatient_SCD.Paths[CMD_to_UAL]"
+              endId="Package\DFT_DimPatient_SCD\UAL_NouvellesVersions.Inputs[Union All Input 1]"
+              startId="Package\DFT_DimPatient_SCD\CMD_ExpirerAncienneVersion.Outputs[OLE DB Command Output]"
+              name="CMD_to_UAL" />
+            <path refId="Package\DFT_DimPatient_SCD.Paths[NoMatch_to_UAL]"
+              endId="Package\DFT_DimPatient_SCD\UAL_NouvellesVersions.Inputs[Union All Input 2]"
+              startId="Package\DFT_DimPatient_SCD\LKP_DimPatient.Outputs[Lookup No Match Output]"
+              name="NoMatch_to_UAL" />
+            <path refId="Package\DFT_DimPatient_SCD.Paths[UAL_to_DRV]"
+              endId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes.Inputs[Derived Column Input]"
+              startId="Package\DFT_DimPatient_SCD\UAL_NouvellesVersions.Outputs[Union All Output 1]"
+              name="UAL_to_DRV" />
+            <path refId="Package\DFT_DimPatient_SCD.Paths[DRV_to_DST]"
+              endId="Package\DFT_DimPatient_SCD\OLE_DST_DimPatient.Inputs[OLE DB Destination Input]"
+              startId="Package\DFT_DimPatient_SCD\DRV_SCD2_Colonnes.Outputs[Derived Column Output]"
+              name="DRV_to_DST" />
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_InitDates_DFT]"
+      DTS:From="Package\SCT_InitDates"
+      DTS:To="Package\DFT_DimPatient_SCD"
+      DTS:DTSID="{A1B2C3D4-0003-0006-0001-000000000001}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_InitDates_DFT" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>
