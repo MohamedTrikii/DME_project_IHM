@@ -1,0 +1,556 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 00_Master_ETL.dtsx
+  Description  : Package orchestrateur principal du pipeline ETL DME
+                 Équivalent du Master Package AdventureWorksDW ETL
+  Rôle         : Appelle séquentiellement tous les sous-packages
+                 Gère les logs de début/fin d'exécution globaux
+                 Gère les erreurs et alertes au niveau pipeline
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  Cours        : 2 GLID 2025-2026
+  ============================================================
+  CONTROL FLOW :
+  ┌─────────────────────────────────────────────────────┐
+  │  SCT_Init : Initialize ETL Run                      │
+  │     → SQL: log.usp_StartRun → @RunID                │
+  ├─────────────────────────────────────────────────────┤
+  │  SCT_ValidateConnections : Test connections         │
+  ├─────────────────────────────────────────────────────┤
+  │  EPT_Staging : Execute 01_Staging_Extract.dtsx      │
+  ├─────────────────────────────────────────────────────┤
+  │  SEQ_Dimensions : Sequence Container Dimensions     │
+  │   ├── EPT_DimPatient : 02_Load_Dim_Patient.dtsx     │
+  │   ├── EPT_DimMedecin : 03_Load_Dim_Medecin.dtsx     │
+  │   └── EPT_DimOthers  : 04_Load_Dimensions.dtsx      │
+  ├─────────────────────────────────────────────────────┤
+  │  SEQ_Facts : Sequence Container Facts               │
+  │   ├── EPT_Consultation: 05_Load_Fact_Consultation   │
+  │   ├── EPT_Ordonnance  : 06_Load_Fact_Ordonnance     │
+  │   ├── EPT_Analyse     : 06_Load_Fact_Analyse        │
+  │   └── EPT_Hospi       : 06_Load_Fact_Hospi          │
+  ├─────────────────────────────────────────────────────┤
+  │  SCT_Finalize : End ETL Run, log stats              │
+  └─────────────────────────────────────────────────────┘
+  ERROR HANDLER : OnError → log.usp_LogError + email alert
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:CreatorComputerName="DME-BI-SERVER"
+  DTS:CreatorName="DME_BI_Team"
+  DTS:DTSID="{A1B2C3D4-0001-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="00_Master_ETL"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0001-0001-0001-000000000002}">
+
+  <!-- =====================================================
+       GESTIONNAIRES DE CONNEXIONS
+       ===================================================== -->
+  <DTS:ConnectionManagers>
+
+    <!-- Connexion à DME_SourceDB (OLTP) -->
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[SourceDB]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0001-0002-0001-000000000001}"
+      DTS:ObjectName="SourceDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_SourceDB;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+
+    <!-- Connexion à DME_Staging -->
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[StagingDB]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0001-0002-0002-000000000001}"
+      DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+
+    <!-- Connexion à DME_DataWarehouse -->
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[DWH]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0001-0002-0003-000000000001}"
+      DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+
+    <!-- Connexion pour les fichiers de log plat -->
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[LogFile]"
+      DTS:CreationName="FILE"
+      DTS:DTSID="{A1B2C3D4-0001-0002-0004-000000000001}"
+      DTS:ObjectName="LogFile">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:FileUsageType="0"
+          DTS:ConnectionString="C:\DME_BI\Logs\ETL_Master.log" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+
+  </DTS:ConnectionManagers>
+
+  <!-- =====================================================
+       VARIABLES DU PACKAGE
+       ===================================================== -->
+  <DTS:Variables>
+
+    <!-- Identifiant unique du run ETL (peuplé par usp_StartRun) -->
+    <DTS:Variable
+      DTS:DataType="3"
+      DTS:DTSID="{A1B2C3D4-0001-0003-0001-000000000001}"
+      DTS:IncludeInDebugDump="2345"
+      DTS:Namespace="User"
+      DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+
+    <!-- Type d'exécution : FULL ou INCREMENTAL -->
+    <DTS:Variable
+      DTS:DataType="8"
+      DTS:DTSID="{A1B2C3D4-0001-0003-0002-000000000001}"
+      DTS:IncludeInDebugDump="2345"
+      DTS:Namespace="User"
+      DTS:ObjectName="TypeExecution">
+      <DTS:VariableValue DTS:DataType="8">FULL</DTS:VariableValue>
+    </DTS:Variable>
+
+    <!-- Environnement : DEV / TEST / PROD -->
+    <DTS:Variable
+      DTS:DataType="8"
+      DTS:DTSID="{A1B2C3D4-0001-0003-0003-000000000001}"
+      DTS:IncludeInDebugDump="2345"
+      DTS:Namespace="User"
+      DTS:ObjectName="Environnement">
+      <DTS:VariableValue DTS:DataType="8">PROD</DTS:VariableValue>
+    </DTS:Variable>
+
+    <!-- Nombre total d'erreurs (agrégé en fin de run) -->
+    <DTS:Variable
+      DTS:DataType="3"
+      DTS:DTSID="{A1B2C3D4-0001-0003-0004-000000000001}"
+      DTS:IncludeInDebugDump="2345"
+      DTS:Namespace="User"
+      DTS:ObjectName="NombreErreurs">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+
+    <!-- Message d'erreur pour le gestionnaire OnError -->
+    <DTS:Variable
+      DTS:DataType="8"
+      DTS:DTSID="{A1B2C3D4-0001-0003-0005-000000000001}"
+      DTS:IncludeInDebugDump="2345"
+      DTS:Namespace="User"
+      DTS:ObjectName="MessageErreur">
+      <DTS:VariableValue DTS:DataType="8"></DTS:VariableValue>
+    </DTS:Variable>
+
+    <!-- Chemin du fichier de configuration -->
+    <DTS:Variable
+      DTS:DataType="8"
+      DTS:DTSID="{A1B2C3D4-0001-0003-0006-000000000001}"
+      DTS:IncludeInDebugDump="2345"
+      DTS:Namespace="User"
+      DTS:ObjectName="ConfigPath">
+      <DTS:VariableValue DTS:DataType="8">C:\DME_BI\Config\DME_ETL.dtsConfig</DTS:VariableValue>
+    </DTS:Variable>
+
+  </DTS:Variables>
+
+  <!-- =====================================================
+       CONFIGURATIONS (fichier .dtsConfig externe)
+       ===================================================== -->
+  <DTS:Configurations>
+    <DTS:Configuration
+      DTS:ConfigurationString="C:\DME_BI\Config\DME_ETL.dtsConfig"
+      DTS:ConfigurationType="1"
+      DTS:DTSID="{A1B2C3D4-0001-0004-0001-000000000001}"
+      DTS:ObjectName="DME_ETL_Config" />
+  </DTS:Configurations>
+
+  <!-- =====================================================
+       CONTROL FLOW — TÂCHES
+       ===================================================== -->
+  <DTS:Executables>
+
+    <!-- ─────────────────────────────────────────────────
+         TÂCHE 1 : Initialisation du Run ETL
+         Appelle log.usp_StartRun et récupère le RunID
+         ───────────────────────────────────────────────── -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_Init"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0001-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="SCT_Init — Démarrer Run ETL"
+      DTS:TaskContact="Execute SQL Task; Microsoft Corporation; SQL Server 2019">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="DECLARE @RunID INT;
+EXEC [log].usp_StartRun
+    @TypeExecution    = ?,
+    @NomEnvironnement = ?,
+    @RunID            = @RunID OUTPUT;
+SELECT @RunID AS RunID;"
+          SQLTask:ResultSetType="1">
+          <!-- Paramètres d'entrée -->
+          <SQLTask:ParameterBindings>
+            <SQLTask:ParameterBinding
+              SQLTask:DtsVariableName="User::TypeExecution"
+              SQLTask:ParameterDirection="Input"
+              SQLTask:DataType="8"
+              SQLTask:ParameterName="0"
+              SQLTask:ParameterSize="-1" />
+            <SQLTask:ParameterBinding
+              SQLTask:DtsVariableName="User::Environnement"
+              SQLTask:ParameterDirection="Input"
+              SQLTask:DataType="8"
+              SQLTask:ParameterName="1"
+              SQLTask:ParameterSize="-1" />
+          </SQLTask:ParameterBindings>
+          <!-- Paramètre de sortie : RunID -->
+          <SQLTask:ResultBindings>
+            <SQLTask:ResultBinding
+              SQLTask:DtsVariableName="User::RunID"
+              SQLTask:ResultName="RunID" />
+          </SQLTask:ResultBindings>
+        </SQLTask:SqlTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- ─────────────────────────────────────────────────
+         TÂCHE 2 : Execute Package — Staging
+         ───────────────────────────────────────────────── -->
+    <DTS:Executable
+      DTS:refId="Package\EPT_Staging"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0001-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="EPT_Staging — Extraction OLTP vers Staging">
+      <DTS:ObjectData>
+        <ExecutePackageTask:ExecutePackageTaskData
+          xmlns:ExecutePackageTask="www.microsoft.com/SqlServer/Dts/Tasks/ExecutePackageTask"
+          ExecutePackageTask:PackageName="01_Staging_Extract.dtsx"
+          ExecutePackageTask:UseProjectReference="True">
+        </ExecutePackageTask:ExecutePackageTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- ─────────────────────────────────────────────────
+         TÂCHE 3 : Séquence Dimensions
+         ───────────────────────────────────────────────── -->
+    <DTS:Executable
+      DTS:refId="Package\SEQ_Dimensions"
+      DTS:CreationName="STOCK:SEQUENCE"
+      DTS:DTSID="{A1B2C3D4-0001-0005-0003-000000000001}"
+      DTS:ExecutableType="STOCK:SEQUENCE"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="SEQ_Dimensions — Chargement toutes dimensions">
+      <DTS:Executables>
+
+        <DTS:Executable
+          DTS:refId="Package\SEQ_Dimensions\EPT_DimPatient"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0005-0003-000000000002}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="EPT_DimPatient — SCD2 Patient">
+          <DTS:ObjectData>
+            <ExecutePackageTask:ExecutePackageTaskData
+              xmlns:ExecutePackageTask="www.microsoft.com/SqlServer/Dts/Tasks/ExecutePackageTask"
+              ExecutePackageTask:PackageName="02_Load_Dim_Patient.dtsx"
+              ExecutePackageTask:UseProjectReference="True">
+            </ExecutePackageTask:ExecutePackageTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <DTS:Executable
+          DTS:refId="Package\SEQ_Dimensions\EPT_DimMedecin"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0005-0003-000000000003}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="EPT_DimMedecin — SCD2 Médecin">
+          <DTS:ObjectData>
+            <ExecutePackageTask:ExecutePackageTaskData
+              xmlns:ExecutePackageTask="www.microsoft.com/SqlServer/Dts/Tasks/ExecutePackageTask"
+              ExecutePackageTask:PackageName="03_Load_Dim_Medecin.dtsx"
+              ExecutePackageTask:UseProjectReference="True">
+            </ExecutePackageTask:ExecutePackageTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <DTS:Executable
+          DTS:refId="Package\SEQ_Dimensions\EPT_DimOthers"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0005-0003-000000000004}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="EPT_DimOthers — Toutes autres dimensions">
+          <DTS:ObjectData>
+            <ExecutePackageTask:ExecutePackageTaskData
+              xmlns:ExecutePackageTask="www.microsoft.com/SqlServer/Dts/Tasks/ExecutePackageTask"
+              ExecutePackageTask:PackageName="04_Load_Dimensions.dtsx"
+              ExecutePackageTask:UseProjectReference="True">
+            </ExecutePackageTask:ExecutePackageTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <!-- Contraintes de précédence dans SEQ_Dimensions -->
+        <DTS:PrecedenceConstraints>
+          <DTS:PrecedenceConstraint
+            DTS:refId="Package\SEQ_Dimensions.PrecedenceConstraints[PC_DimPatient_DimMedecin]"
+            DTS:From="Package\SEQ_Dimensions\EPT_DimPatient"
+            DTS:To="Package\SEQ_Dimensions\EPT_DimMedecin"
+            DTS:DTSID="{A1B2C3D4-0001-0006-0001-000000000001}"
+            DTS:EvalOp="1"
+            DTS:LogicalAnd="True"
+            DTS:ObjectName="PC_DimPatient_DimMedecin" />
+          <DTS:PrecedenceConstraint
+            DTS:refId="Package\SEQ_Dimensions.PrecedenceConstraints[PC_DimMedecin_DimOthers]"
+            DTS:From="Package\SEQ_Dimensions\EPT_DimMedecin"
+            DTS:To="Package\SEQ_Dimensions\EPT_DimOthers"
+            DTS:DTSID="{A1B2C3D4-0001-0006-0002-000000000001}"
+            DTS:EvalOp="1"
+            DTS:LogicalAnd="True"
+            DTS:ObjectName="PC_DimMedecin_DimOthers" />
+        </DTS:PrecedenceConstraints>
+
+      </DTS:Executables>
+    </DTS:Executable>
+
+    <!-- ─────────────────────────────────────────────────
+         TÂCHE 4 : Séquence Facts
+         ───────────────────────────────────────────────── -->
+    <DTS:Executable
+      DTS:refId="Package\SEQ_Facts"
+      DTS:CreationName="STOCK:SEQUENCE"
+      DTS:DTSID="{A1B2C3D4-0001-0005-0004-000000000001}"
+      DTS:ExecutableType="STOCK:SEQUENCE"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="SEQ_Facts — Chargement tables de faits">
+      <DTS:Executables>
+
+        <DTS:Executable
+          DTS:refId="Package\SEQ_Facts\EPT_FactConsultation"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0005-0004-000000000002}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="EPT_FactConsultation">
+          <DTS:ObjectData>
+            <ExecutePackageTask:ExecutePackageTaskData
+              xmlns:ExecutePackageTask="www.microsoft.com/SqlServer/Dts/Tasks/ExecutePackageTask"
+              ExecutePackageTask:PackageName="05_Load_Fact_Consultation.dtsx"
+              ExecutePackageTask:UseProjectReference="True">
+            </ExecutePackageTask:ExecutePackageTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <DTS:Executable
+          DTS:refId="Package\SEQ_Facts\EPT_FactsRest"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0005-0004-000000000003}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecutePackageTask.ExecutePackageTask, Microsoft.SqlServer.ExecPkgTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="EPT_FactsRest — Ordonnance, Analyse, Hospitalisation">
+          <DTS:ObjectData>
+            <ExecutePackageTask:ExecutePackageTaskData
+              xmlns:ExecutePackageTask="www.microsoft.com/SqlServer/Dts/Tasks/ExecutePackageTask"
+              ExecutePackageTask:PackageName="06_Load_Facts_Rest.dtsx"
+              ExecutePackageTask:UseProjectReference="True">
+            </ExecutePackageTask:ExecutePackageTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+
+        <DTS:PrecedenceConstraints>
+          <DTS:PrecedenceConstraint
+            DTS:refId="Package\SEQ_Facts.PrecedenceConstraints[PC_FactConsult_FactsRest]"
+            DTS:From="Package\SEQ_Facts\EPT_FactConsultation"
+            DTS:To="Package\SEQ_Facts\EPT_FactsRest"
+            DTS:DTSID="{A1B2C3D4-0001-0006-0003-000000000001}"
+            DTS:EvalOp="1"
+            DTS:LogicalAnd="True"
+            DTS:ObjectName="PC_FactConsult_FactsRest" />
+        </DTS:PrecedenceConstraints>
+
+      </DTS:Executables>
+    </DTS:Executable>
+
+    <!-- ─────────────────────────────────────────────────
+         TÂCHE 5 : Audit final + fermeture du run
+         ───────────────────────────────────────────────── -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_Finalize"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0001-0005-0005-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="SCT_Finalize — Clôturer Run ETL">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+          SQLTask:SqlStatementSource="EXEC [log].usp_EndRun @RunID = ?, @Statut = N'SUCCES';">
+          <SQLTask:ParameterBindings>
+            <SQLTask:ParameterBinding
+              SQLTask:DtsVariableName="User::RunID"
+              SQLTask:ParameterDirection="Input"
+              SQLTask:DataType="3"
+              SQLTask:ParameterName="0"
+              SQLTask:ParameterSize="-1" />
+          </SQLTask:ParameterBindings>
+        </SQLTask:SqlTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <!-- =====================================================
+       CONTRAINTES DE PRÉCÉDENCE (Control Flow principal)
+       ===================================================== -->
+  <DTS:PrecedenceConstraints>
+
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Init_Staging]"
+      DTS:From="Package\SCT_Init"
+      DTS:To="Package\EPT_Staging"
+      DTS:DTSID="{A1B2C3D4-0001-0006-0010-000000000001}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Init_Staging" />
+
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Staging_Dimensions]"
+      DTS:From="Package\EPT_Staging"
+      DTS:To="Package\SEQ_Dimensions"
+      DTS:DTSID="{A1B2C3D4-0001-0006-0010-000000000002}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Staging_Dimensions" />
+
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Dimensions_Facts]"
+      DTS:From="Package\SEQ_Dimensions"
+      DTS:To="Package\SEQ_Facts"
+      DTS:DTSID="{A1B2C3D4-0001-0006-0010-000000000003}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Dimensions_Facts" />
+
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Facts_Finalize]"
+      DTS:From="Package\SEQ_Facts"
+      DTS:To="Package\SCT_Finalize"
+      DTS:DTSID="{A1B2C3D4-0001-0006-0010-000000000004}"
+      DTS:EvalOp="1"
+      DTS:LogicalAnd="True"
+      DTS:ObjectName="PC_Facts_Finalize" />
+
+  </DTS:PrecedenceConstraints>
+
+  <!-- =====================================================
+       GESTIONNAIRE D'ÉVÉNEMENTS — OnError (global)
+       ===================================================== -->
+  <DTS:EventHandlers>
+    <DTS:EventHandler
+      DTS:refId="Package.EventHandlers[OnError]"
+      DTS:CreationName=""
+      DTS:DTSID="{A1B2C3D4-0001-0007-0001-000000000001}"
+      DTS:EventName="OnError"
+      DTS:ObjectName="OnError">
+      <DTS:Variables>
+        <DTS:Variable
+          DTS:DataType="8"
+          DTS:DTSID="{A1B2C3D4-0001-0007-0002-000000000001}"
+          DTS:Namespace="System"
+          DTS:ObjectName="ErrorDescription">
+          <DTS:VariableValue DTS:DataType="8"></DTS:VariableValue>
+        </DTS:Variable>
+      </DTS:Variables>
+      <DTS:Executables>
+        <!-- Enregistrer l'erreur dans log.ETL_ErrorLog -->
+        <DTS:Executable
+          DTS:refId="Package.EventHandlers[OnError]\SCT_LogError"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0007-0003-000000000001}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_LogError — Enregistrer erreur">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+              SQLTask:SqlStatementSource="EXEC [log].usp_LogError
+    @RunID          = ?,
+    @NomPackage     = N'00_Master_ETL',
+    @MessageErreur  = ?,
+    @Severite       = N'CRITIQUE';">
+              <SQLTask:ParameterBindings>
+                <SQLTask:ParameterBinding
+                  SQLTask:DtsVariableName="User::RunID"
+                  SQLTask:ParameterDirection="Input"
+                  SQLTask:DataType="3"
+                  SQLTask:ParameterName="0"
+                  SQLTask:ParameterSize="-1" />
+                <SQLTask:ParameterBinding
+                  SQLTask:DtsVariableName="System::ErrorDescription"
+                  SQLTask:ParameterDirection="Input"
+                  SQLTask:DataType="8"
+                  SQLTask:ParameterName="1"
+                  SQLTask:ParameterSize="-1" />
+              </SQLTask:ParameterBindings>
+            </SQLTask:SqlTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+        <!-- Marquer le run en ECHEC -->
+        <DTS:Executable
+          DTS:refId="Package.EventHandlers[OnError]\SCT_MarkFailed"
+          DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:DTSID="{A1B2C3D4-0001-0007-0004-000000000001}"
+          DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+          DTS:ObjectName="SCT_MarkFailed — Marquer Run ECHEC">
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:Connection="Package.ConnectionManagers[StagingDB]"
+              SQLTask:SqlStatementSource="EXEC [log].usp_EndRun @RunID = ?, @Statut = N'ECHEC';">
+              <SQLTask:ParameterBindings>
+                <SQLTask:ParameterBinding
+                  SQLTask:DtsVariableName="User::RunID"
+                  SQLTask:ParameterDirection="Input"
+                  SQLTask:DataType="3"
+                  SQLTask:ParameterName="0"
+                  SQLTask:ParameterSize="-1" />
+              </SQLTask:ParameterBindings>
+            </SQLTask:SqlTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+      </DTS:Executables>
+      <DTS:PrecedenceConstraints>
+        <DTS:PrecedenceConstraint
+          DTS:refId="Package.EventHandlers[OnError].PrecedenceConstraints[PC_LogError_MarkFailed]"
+          DTS:From="Package.EventHandlers[OnError]\SCT_LogError"
+          DTS:To="Package.EventHandlers[OnError]\SCT_MarkFailed"
+          DTS:DTSID="{A1B2C3D4-0001-0007-0005-000000000001}"
+          DTS:EvalOp="1"
+          DTS:LogicalAnd="True"
+          DTS:ObjectName="PC_LogError_MarkFailed" />
+      </DTS:PrecedenceConstraints>
+    </DTS:EventHandler>
+  </DTS:EventHandlers>
+
+</DTS:Executable>

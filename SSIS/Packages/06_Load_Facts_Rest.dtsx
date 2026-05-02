@@ -1,0 +1,213 @@
+<?xml version="1.0"?>
+<!--
+  ============================================================
+  Package SSIS : 06_Load_Facts_Rest.dtsx
+  Description  : Chargement des 3 tables de faits restantes :
+                 Fact_Ordonnance, Fact_Analyse, Fact_Hospitalisation
+  Stratégie    : Execute SQL Tasks (MERGE T-SQL pour chaque fait)
+                 Séquence : Ordonnance → Analyse → Hospitalisation
+  Projet       : DME_BI - Architecture SSIS Professionnelle
+  ============================================================
+-->
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="5/1/2026 2:00:00 AM"
+  DTS:CreationName="MSPKG"
+  DTS:DTSID="{A1B2C3D4-0007-0001-0001-000000000001}"
+  DTS:ExecutableType="MSPKG"
+  DTS:LastModifiedProductVersion="15.0.2000.130"
+  DTS:LocaleID="1036"
+  DTS:ObjectName="06_Load_Facts_Rest"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{A1B2C3D4-0007-0001-0001-000000000002}">
+
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[StagingDB]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0007-0002-0001-000000000001}" DTS:ObjectName="StagingDB">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[DWH]" DTS:CreationName="OLEDB"
+      DTS:DTSID="{A1B2C3D4-0007-0002-0002-000000000001}" DTS:ObjectName="DWH">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DTS:ConnectionString="Data Source=.;Initial Catalog=DME_DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables>
+    <DTS:Variable DTS:DataType="3" DTS:DTSID="{A1B2C3D4-0007-0003-0001-000000000001}"
+      DTS:Namespace="User" DTS:ObjectName="RunID">
+      <DTS:VariableValue DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+
+  <DTS:Executables>
+
+    <!-- ─── FACT_ORDONNANCE ─── -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_LoadFactOrdonnance"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0007-0005-0001-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_LoadFactOrdonnance — Charger Fact_Ordonnance">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="-- Chargement Fact_Ordonnance (nouvelles lignes uniquement)
+INSERT INTO dbo.Fact_Ordonnance (
+    DateKey, PatientKey, MedecinKey, MedicamentKey, ConsultationKey,
+    OrdonnanceID, DureeTrtJours
+)
+SELECT
+    DateKey        = YEAR(o.DatePrescription)*10000 + MONTH(o.DatePrescription)*100 + DAY(o.DatePrescription),
+    PatientKey     = dp.PatientKey,
+    MedecinKey     = dm.MedecinKey,
+    MedicamentKey  = dmed.MedicamentKey,
+    ConsultationKey = fc.ConsultationKey,
+    OrdonnanceID   = o.OrdonnanceID,
+    DureeTrtJours  = TRY_CAST(
+        LTRIM(RTRIM(LEFT(o.DureeTrt, CHARINDEX(N'jour', LOWER(o.DureeTrt)) - 1)))
+        AS INT)
+FROM DME_Staging.stg.Ordonnance     o
+JOIN dbo.Dim_Patient    dp   ON o.PatientID     = dp.PatientID   AND dp.EstCourant = 1
+JOIN dbo.Dim_Medecin    dm   ON o.MedecinID     = dm.MedecinID   AND dm.EstCourant = 1
+JOIN dbo.Dim_Medicament dmed ON o.MedicamentID  = dmed.MedicamentID
+JOIN dbo.Fact_Consultation fc ON o.ConsultationID = fc.ConsultationID
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Fact_Ordonnance fo WHERE fo.OrdonnanceID = o.OrdonnanceID
+);
+
+PRINT CONCAT(N'Fact_Ordonnance : ', @@ROWCOUNT, N' lignes insérées');" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- ─── FACT_ANALYSE ─── -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_LoadFactAnalyse"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0007-0005-0002-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_LoadFactAnalyse — Charger Fact_Analyse">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="-- Chargement Fact_Analyse (nouvelles demandes uniquement)
+INSERT INTO dbo.Fact_Analyse (
+    DateDemandeKey, DateResultatKey, PatientKey, MedecinKey,
+    TypeAnalyseKey, HopitalKey, DemandeID, Valeur,
+    EstAnormal, EstUrgent, DelaiResultatJours
+)
+SELECT
+    DateDemandeKey  = YEAR(da.DateDemande)*10000 + MONTH(da.DateDemande)*100 + DAY(da.DateDemande),
+    DateResultatKey = CASE WHEN ra.DateResultat IS NOT NULL
+                     THEN YEAR(ra.DateResultat)*10000 + MONTH(ra.DateResultat)*100 + DAY(ra.DateResultat)
+                     ELSE NULL END,
+    PatientKey      = dp.PatientKey,
+    MedecinKey      = dm.MedecinKey,
+    TypeAnalyseKey  = dta.TypeAnalyseKey,
+    HopitalKey      = ISNULL(
+                        (SELECT TOP 1 dh.HopitalKey
+                         FROM DME_SourceDB.dbo.Medecins src_m
+                         JOIN dbo.Dim_Hopital dh ON src_m.HopitalID = dh.HopitalID
+                         WHERE src_m.MedecinID = da.MedecinID), 1),
+    DemandeID       = da.DemandeID,
+    Valeur          = ra.Valeur,
+    EstAnormal      = ISNULL(ra.Anormal, 0),
+    EstUrgent       = da.Urgence,
+    DelaiResultatJours = CASE WHEN ra.DateResultat IS NOT NULL
+                         THEN DATEDIFF(DAY, da.DateDemande, ra.DateResultat)
+                         ELSE NULL END
+FROM DME_Staging.stg.DemandeAnalyse  da
+JOIN dbo.Dim_Patient     dp  ON da.PatientID     = dp.PatientID   AND dp.EstCourant = 1
+JOIN dbo.Dim_Medecin     dm  ON da.MedecinID     = dm.MedecinID   AND dm.EstCourant = 1
+JOIN dbo.Dim_TypeAnalyse dta ON da.TypeAnalyseID = dta.TypeAnalyseID
+LEFT JOIN DME_Staging.stg.ResultatAnalyse ra ON da.DemandeID = ra.DemandeID
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Fact_Analyse fa WHERE fa.DemandeID = da.DemandeID
+);
+
+PRINT CONCAT(N'Fact_Analyse : ', @@ROWCOUNT, N' lignes insérées');" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+    <!-- ─── FACT_HOSPITALISATION ─── -->
+    <DTS:Executable
+      DTS:refId="Package\SCT_LoadFactHospi"
+      DTS:CreationName="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:DTSID="{A1B2C3D4-0007-0005-0003-000000000001}"
+      DTS:ExecutableType="Microsoft.SqlServer.Dts.Tasks.ExecuteSQLTask.ExecuteSQLTask, Microsoft.SqlServer.SQLTask, Version=15.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+      DTS:ObjectName="SCT_LoadFactHospi — Charger Fact_Hospitalisation">
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:Connection="Package.ConnectionManagers[DWH]"
+          SQLTask:SqlStatementSource="-- Chargement Fact_Hospitalisation
+-- UPDATE si DateSortie est maintenant disponible (hospitalisation terminée)
+UPDATE dbo.Fact_Hospitalisation
+SET    DateSortieKey    = YEAR(h.DateSortie)*10000 + MONTH(h.DateSortie)*100 + DAY(h.DateSortie),
+       DureeSejourJours = DATEDIFF(DAY, h_src.DateEntree, h.DateSortie),
+       CoutSejour       = h.CoutSejour
+FROM dbo.Fact_Hospitalisation fh
+JOIN DME_Staging.stg.Hospitalisation h     ON fh.HospitalisationID = h.HospitalisationID
+JOIN DME_SourceDB.dbo.Hospitalisations h_src ON h.HospitalisationID = h_src.HospitalisationID
+WHERE h.DateSortie IS NOT NULL AND fh.DateSortieKey IS NULL;
+
+PRINT CONCAT(N'Fact_Hospitalisation UPDATE : ', @@ROWCOUNT, N' lignes mises à jour');
+
+-- INSERT nouvelles hospitalisations
+INSERT INTO dbo.Fact_Hospitalisation (
+    DateEntreeKey, DateSortieKey, PatientKey, MedecinKey,
+    DiagnosticKey, HopitalKey, HospitalisationID,
+    DureeSejourJours, CoutSejour, Service
+)
+SELECT
+    DateEntreeKey   = YEAR(h.DateEntree)*10000 + MONTH(h.DateEntree)*100 + DAY(h.DateEntree),
+    DateSortieKey   = CASE WHEN h.DateSortie IS NOT NULL
+                     THEN YEAR(h.DateSortie)*10000 + MONTH(h.DateSortie)*100 + DAY(h.DateSortie)
+                     ELSE NULL END,
+    PatientKey      = dp.PatientKey,
+    MedecinKey      = dm.MedecinKey,
+    DiagnosticKey   = dd.DiagnosticKey,
+    HopitalKey      = dh.HopitalKey,
+    HospitalisationID = h.HospitalisationID,
+    DureeSejourJours = CASE WHEN h.DateSortie IS NOT NULL
+                      THEN DATEDIFF(DAY, h.DateEntree, h.DateSortie) ELSE NULL END,
+    CoutSejour      = h.CoutSejour,
+    Service         = h.Service
+FROM DME_Staging.stg.Hospitalisation h
+JOIN dbo.Dim_Patient    dp ON h.PatientID    = dp.PatientID    AND dp.EstCourant = 1
+JOIN dbo.Dim_Medecin    dm ON h.MedecinID   = dm.MedecinID    AND dm.EstCourant = 1
+JOIN dbo.Dim_Diagnostic dd ON h.DiagnosticID = dd.DiagnosticID
+JOIN dbo.Dim_Hopital    dh ON h.HopitalID   = dh.HopitalID
+WHERE h.DiagnosticID IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM dbo.Fact_Hospitalisation fh WHERE fh.HospitalisationID = h.HospitalisationID
+);
+
+PRINT CONCAT(N'Fact_Hospitalisation INSERT : ', @@ROWCOUNT, N' lignes insérées');" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+
+  </DTS:Executables>
+
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Ordo_Analyse]"
+      DTS:From="Package\SCT_LoadFactOrdonnance"
+      DTS:To="Package\SCT_LoadFactAnalyse"
+      DTS:DTSID="{A1B2C3D4-0007-0006-0001-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_Ordo_Analyse" />
+    <DTS:PrecedenceConstraint
+      DTS:refId="Package.PrecedenceConstraints[PC_Analyse_Hospi]"
+      DTS:From="Package\SCT_LoadFactAnalyse"
+      DTS:To="Package\SCT_LoadFactHospi"
+      DTS:DTSID="{A1B2C3D4-0007-0006-0002-000000000001}"
+      DTS:EvalOp="1" DTS:LogicalAnd="True" DTS:ObjectName="PC_Analyse_Hospi" />
+  </DTS:PrecedenceConstraints>
+
+</DTS:Executable>
